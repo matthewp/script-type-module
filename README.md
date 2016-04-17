@@ -1,4 +1,4 @@
-# <script type=module> - the polyfill!
+# &lt;script type=module&gt; - the polyfill!
 
 ***Note*** this is a proof of concept only, don't actually try to use it. However, it does demonstrate that the tag can be polyfilled without much code.
 
@@ -7,7 +7,7 @@ Currently this only supports:
 * `import a from 'b'` type of imports
 * `export default function()...` type of exports
 
-This is because my regular expressions are very simple. If you'd like to contribute, expanding support for all of the various import/export syntaxes would be huge, my regex skills aren't great.
+This is because my regular expressions are very simple ([see here](https://github.com/matthewp/script-type-module/blob/master/script-type-module.js#L8-L9)). If you'd like to contribute, expanding support for all of the various import/export syntaxes would be huge, my regex skills aren't great.
 
 See the `demo/` folder for a working example.
 

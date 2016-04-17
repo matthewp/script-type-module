@@ -1,0 +1,23 @@
+{
+  "name": "script-type-module",
+  "version": "0.1.0",
+  "description": "<script type=module> polyfill",
+  "main": "script-type-module.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/matthewp/script-type-module.git"
+  },
+  "keywords": [
+    "script",
+    "module"
+  ],
+  "author": "Matthew Phillips",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/matthewp/script-type-module/issues"
+  },
+  "homepage": "https://github.com/matthewp/script-type-module#readme"
+}

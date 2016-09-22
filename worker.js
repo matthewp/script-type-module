@@ -11,7 +11,13 @@ function makeVisitors(url){
       let source = node.source;
       let specifiers = node.specifiers || [];
       // TODO better namespace naming algo
-      let namespaceName = specifiers[0].local.name + 'Namespace';
+      let namespaceName;
+      if(specifiers.length) {
+        namespaceName = specifiers[0].local.name + 'Namespace';
+      } else {
+        namespaceName = 'anon' + state.anonCount + 'Namespace';
+        state.anonCount++;
+      }
       state.deps.push(new URL(source.value, url).toString());
 
       specifiers.forEach(function(node){
@@ -134,12 +140,15 @@ onmessage = function(ev){
   let msg = decode(ev.data);
   let url = msg.url;
 
-  fetch(url)
-  .then(function(resp){
-    return resp.text();
-  })
+  let fetchPromise = msg.src ? Promise.resolve(msg.src)
+    : fetch(url).then(function(resp){
+      return resp.text();
+    });
+
+  fetchPromise
   .then(function(src){
     let state = {
+      anonCount: 0,
       deps: [],
       specifiers: {}
     };

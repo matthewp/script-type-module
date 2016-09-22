@@ -7,6 +7,7 @@ __scriptTypeModuleEval = function(src){
   let importPromises = new Map();
   let workPromises = new Map();
   let forEach = Array.prototype.forEach;
+  let anonCount = 0;
 
   self._importTypeModuleTools = function(url){
     let namespace = {};
@@ -47,8 +48,11 @@ __scriptTypeModuleEval = function(src){
   }
 
   function importScript(script) {
+    let url = "" + (script.src || new URL('./!anonymous_' + anonCount++, document.baseURI));
+    let src = script.src ? undefined : script.textContent;
+
     // TODO what about inline modules
-    return importModule(script.src)
+    return importModule(url, src)
     .then(function(){
       var ev = new Event('load');
       script.dispatchEvent(ev);
@@ -58,7 +62,7 @@ __scriptTypeModuleEval = function(src){
     });
   }
 
-  function importModule(url) {
+  function importModule(url, src) {
     var value = moduleMap.get(url);
     var promise;
     if(value === "fetching") {
@@ -69,7 +73,8 @@ __scriptTypeModuleEval = function(src){
       promise = new Promise(function(resolve, reject){
         messageWorker({
           type: 'fetch',
-          url: url
+          url: url,
+          src: src
         });
         filterMessages(function(msg){
           if(msg.type === 'fetch' && msg.url === url) {

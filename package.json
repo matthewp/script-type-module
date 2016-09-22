@@ -4,7 +4,7 @@
   "description": "<script type=module> polyfill",
   "main": "script-type-module.js",
   "scripts": {
-    "test": "testee test/everything.html --browsers firefox"
+    "test": "testee test/everything.html test/inline-everything.html --browsers firefox"
   },
   "repository": {
     "type": "git",

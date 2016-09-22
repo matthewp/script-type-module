@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head>
+  <title>Test import syntaxes</title>
+  <script src="../script-type-module.js" defer></script>
+  <script src="../node_modules/webcomponents.js/webcomponents-lite.js" defer></script>
+  <link rel="import" href="../node_modules/mocha-test/mocha-test.html" defer>
+</head>
+<body>
+  <div id="host"></div>
+<mocha-test>
+<template>
+<script>
+  describe('import *', function(){
+    this.timeout(5000);
+
+    after(function(){
+      host.innerHTML = '';
+    });
+
+    it('works', function(done){
+      var script = document.createElement('script');
+      script.type = 'module';
+      script.onload = function(){
+        assert.equal(self.RESULT.foo, 'bar');
+        assert.equal(self.RESULT.bar, 17);
+        done();
+      };
+      script.src = new URL('./tests/imports/star.js', document.baseURI);
+      document.head.appendChild(script);
+    });
+  });
+</script>
+</template>
+</mocha-test>
+</body>
+</html>

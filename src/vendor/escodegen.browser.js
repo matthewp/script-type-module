@@ -4934,4 +4934,4 @@
     }));
   });
   require('/tools/entry-point.js');
-}.call(this, this));
+}.call(self, self));

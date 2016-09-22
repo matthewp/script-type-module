@@ -10,6 +10,10 @@
   <div id="host"></div>
 <mocha-test>
 <template>
+<script type="module" id="the-module">
+  import './tests/everything/foo.js';
+</script>
+
 <script>
   describe('Everything', function(){
     this.timeout(5000);
@@ -19,14 +23,11 @@
     });
 
     it('works', function(done){
-      var script = document.createElement('script');
-      script.type = 'module';
+      var script = document.getElementById('the-module');
       script.onload = function(){
         assert.equal(host.textContent, 'foobar');
         done();
       };
-      script.src = new URL('./tests/everything/foo.js', document.baseURI);
-      document.head.appendChild(script);
     });
   });
 </script>

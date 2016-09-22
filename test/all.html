@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head>
+  <title>script-type-module tests</title>
+  <style>
+    iframe {
+      border: 1px solid pink;
+      flex: 1;
+      margin-left: .5em;
+    }
+    .tests {
+      display: flex;
+      min-height: 300px;
+      margin-bottom: .5em;
+    }
+    .tests iframe {
+      flex-grow: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="tests">
+    <iframe src="./everything.html"></iframe>
+    <iframe src="./inline-everything.html"></iframe>
+  </div>
+</body>
+</html>

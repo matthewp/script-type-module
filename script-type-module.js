@@ -18,8 +18,8 @@ __scriptTypeModuleEval = function(src){
         let ns = moduleMap.get(u);
         return ns;
       },
-      defaultExport: function(value){
-        namespace.default = value;
+      namedExport: function(name, value){
+        namespace[name] = value;
       }
     };
   };

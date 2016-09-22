@@ -28,6 +28,13 @@ function makeVisitors(url){
               type: 'default'
             };
             break;
+          case 'ImportSpecifier':
+            state.specifiers[node.local.name] = {
+              ns: namespaceName,
+              type: 'named',
+              prop: node.imported.name
+            };
+            break;
         }
       });
 
@@ -71,25 +78,62 @@ function makeVisitors(url){
     ExportDefaultDeclaration: function(node, state){
       state.includeTools = true;
       let decl = node.declaration;
-      node.type = 'CallExpression';
-      node.callee = {
-        type: 'MemberExpression',
-        object: {
-          type: 'Identifier',
-          name: '_moduleTools'
+      node.type = 'ExpressionStatement';
+      node.expression = {
+        type: 'CallExpression',
+        callee: {
+          type: 'MemberExpression',
+          object: {
+            type: 'Identifier',
+            name: '_moduleTools'
+          },
+          property: {
+            type: 'Identifier',
+            name: 'namedExport'
+          }
         },
-        property: {
-          type: 'Identifier',
-          name: 'defaultExport'
-        }
+        arguments: [{
+          type: 'Literal',
+          value: 'default',
+          raw: "'default'"
+        }, node.declaration]
       };
-      node.arguments = [node.declaration];
+
       delete node.declaration;
+    },
+    ExportNamedDeclaration: function(node, state){
+      state.includeTools = true;
+      let decl = node.declaration;
+      let name = decl.id.name;
+
+      node.type = 'ExpressionStatement'
+      node.expression = {
+        type: 'CallExpression',
+        callee: {
+          type: 'MemberExpression',
+          object: {
+            type: 'Identifier',
+            name: '_moduleTools'
+          },
+          property: {
+            type: 'Identifier',
+            name: 'namedExport'
+          }
+        },
+          arguments: [{
+          type: 'Literal',
+          value: name,
+          raw: "'" + name + "'"
+        }, node.declaration]
+      };
+
+      delete node.declaration;
+      delete node.specifiers;
     },
     Identifier: function(node, state){
       let specifier = state.specifiers[node.name];
       if(specifier) {
-        let prop = specifier.type === 'default' ? 'default': 'PROP';
+        let prop = specifier.type === 'default' ? 'default': specifier.prop;
         node.type = 'MemberExpression';
         node.object = {
           type: 'Identifier',

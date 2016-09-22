@@ -1,5 +1,5 @@
 import thing from './folder/thing.js';
 
-export default function(){
-  return "bar";
+export function bar(){
+  return 'bar';
 };

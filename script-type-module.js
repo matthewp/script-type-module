@@ -1,36 +1,35 @@
 __scriptTypeModuleEval = function(src){
   eval(src);
 };
+(function () {
+'use strict';
 
-(function(self){
-  let moduleMap = new Map();
-  let importPromises = new Map();
-  let workPromises = new Map();
-  let forEach = Array.prototype.forEach;
-  let anonCount = 0;
+function hasNativeSupport(){
+  var script = document.createElement('script');
+  script.type = 'module';
+  var tempVar = '_scriptModuleSupported';
+  script.textContnet = 'window._scriptModuleSupported = true;';
+  document.head.appendChild(script);
+  document.head.appendChild(script);
+  var val = !!window[tempVar];
+  delete window[tempVar];
+  script.parentNode.removeChild(script);
+  return val;
+}
 
-  self._importTypeModuleTools = function(url){
-    let namespace = {};
-    moduleMap.set(url, namespace);
-    return {
-      staticImport: function(specifier){
-        let u = new URL(specifier, url).toString();
-        let ns = moduleMap.get(u);
-        return ns;
-      },
-      namedExport: function(name, value){
-        namespace[name] = value;
-      }
-    };
-  };
+function decode(msg){
+  return JSON.parse(msg);
+}
 
-  let workerURL = new URL('./worker.js', document.currentScript.src);
-  let worker = new Worker(workerURL);
+function encode(msg){
+  return JSON.stringify(msg);
+}
 
-  function messageWorker(msg) {
-    worker.postMessage(encode(msg));
-  }
+function send(worker, msg) {
+  worker.postMessage(encode(msg));
+}
 
+function listen(worker){
   let messageCallbacks = [];
   worker.onmessage = function(ev){
     let msg = decode(ev.data), cb;
@@ -43,9 +42,98 @@ __scriptTypeModuleEval = function(src){
     }
   };
 
-  function filterMessages(cb){
+  return function(cb){
     messageCallbacks.push(cb);
+  };
+}
+
+var addModuleTools = function(moduleMap){
+  self._importTypeModuleTools = function(url){
+    let namespace = {};
+    moduleMap.set(url, namespace);
+    return {
+      namespace: namespace,
+      staticImport: function(specifier){
+        let u = new URL(specifier, url).toString();
+        let ns = moduleMap.get(u);
+        return ns;
+      },
+      namedExport: function(name, value){
+        namespace[name] = value;
+      }
+    };
+  };
+}
+
+var execute = function({ code, url, resolve, reject }){
+  code += '\n//# sourceURL=' + url;
+  try {
+    __scriptTypeModuleEval(code);
+    resolve();
+  } catch(err){
+    reject(err);
   }
+}
+
+// TODO saving this space in case I want to support multiple workers
+
+var spawn = function(){
+  let workerURL = new URL('./worker.js', document.currentScript.src);
+  return new Worker(workerURL);
+}
+
+class ModuleRecord {
+  constructor() {
+    this.requestedModules = null;
+  }
+}
+
+class ModuleScript {
+  constructor(url, resolve, reject){
+    this.moduleRecord = new ModuleRecord();
+    this.url = url;
+    this.resolve = resolve;
+    this.reject = reject;
+  }
+}
+
+const forEach = Array.prototype.forEach;
+
+function importExisting(importScript){
+  let tags = document.querySelectorAll('script[type=module]');
+  forEach.call(tags, importScript);
+}
+
+function observe(importScript) {
+  let mo = new MutationObserver(function(mutations){
+    forEach.call(mutations, function(mutation){
+      forEach.call(mutation.addedNodes, function(el){
+        if(el.nodeName === 'SCRIPT' && el.type === 'module') {
+          importScript(el);
+        }
+      });
+    });
+  });
+  mo.observe(document.documentElement, {
+    childList: true,
+    subtree: true
+  });
+
+  return mo;
+}
+
+if(!hasNativeSupport()) {
+  let worker = spawn();
+
+  let moduleMap = new Map();
+  let importPromises = new Map();
+  let workPromises = new Map();
+  let forEach = Array.prototype.forEach;
+  let anonCount = 0;
+
+  addModuleTools(moduleMap);
+
+  let filter = listen(worker);
 
   function importScript(script) {
     let url = "" + (script.src || new URL('./!anonymous_' + anonCount++, document.baseURI));
@@ -71,14 +159,15 @@ __scriptTypeModuleEval = function(src){
       promise = Promise.resolve(value);
     } else {
       promise = new Promise(function(resolve, reject){
-        messageWorker({
+        let moduleScript = new ModuleScript(url, resolve, reject);
+        send(worker, {
           type: 'fetch',
           url: url,
           src: src
         });
-        filterMessages(function(msg){
+        filter(function(msg){
           if(msg.type === 'fetch' && msg.url === url) {
-            handleFetch(msg, resolve, reject);
+            handleFetch(msg, moduleScript);
             return true;
           }
         });
@@ -88,49 +177,20 @@ __scriptTypeModuleEval = function(src){
     return promise;
   }
 
-  function decode(msg){
-    return JSON.parse(msg);
-  }
-
-  function encode(msg){
-    return JSON.stringify(msg);
-  }
-
-  function handleFetch(msg, resolve, reject){
-    let src = msg.src;
+  function handleFetch(msg, moduleScript){
+    let src = moduleScript.code = msg.src;
     let deps = msg.deps;
-
-    function onsuccess(){
-      src += '\n//# sourceURL=' + msg.url;
-      try {
-        __scriptTypeModuleEval(src);
-        resolve();
-      } catch(err){
-        reject(err);
-      }
-    }
 
     Promise.all(deps.map(function(url){
       return importModule(url);
     }))
-    .then(onsuccess, reject);
+    .then(function(){
+      execute(moduleScript);
+    }, moduleScript.reject);
   }
 
+  importExisting(importScript);
+  observe(importScript);
+}
 
-  let tags = document.querySelectorAll('script[type=module]');
-  forEach.call(tags, importScript);
-
-  var mo = new MutationObserver(function(mutations){
-    forEach.call(mutations, function(mutation){
-      forEach.call(mutation.addedNodes, function(el){
-        if(el.nodeName === 'SCRIPT' && el.type === 'module') {
-          importScript(el);
-        }
-      });
-    });
-  });
-  mo.observe(document.documentElement, {
-    childList: true,
-    subtree: true
-  })
-})(window);
+}());

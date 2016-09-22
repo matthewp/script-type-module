@@ -24,6 +24,12 @@ export default function(node, state){
           prop: node.imported.name
         };
         break;
+      case 'ImportNamespaceSpecifier':
+        state.specifiers[node.local.name] = {
+          ns: namespaceName,
+          type: 'star'
+        };
+        break;
     }
   });
 

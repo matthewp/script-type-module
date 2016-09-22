@@ -11,25 +11,123 @@
 <mocha-test>
 <template>
 <script>
-  describe('import *', function(){
+(function(){
+  let importDynamic = function(specifier){
+    return new Promise(function(resolve, reject){
+      let script = document.createElement('script');
+      script.type = 'module';
+      script.onload = function(){
+        script.parentNode.removeChild(script);
+        resolve();
+      };
+      script.src = new URL(specifier, document.baseURI);
+      document.head.appendChild(script);
+    });
+  };
+
+  describe('import default', function(){
     this.timeout(5000);
 
-    after(function(){
-      host.innerHTML = '';
+    beforeEach(function(){
+      delete self.RESULT;
     });
 
     it('works', function(done){
-      var script = document.createElement('script');
-      script.type = 'module';
-      script.onload = function(){
+      importDynamic('./tests/imports/default.js')
+      .then(function(){
         assert.equal(self.RESULT.foo, 'bar');
-        assert.equal(self.RESULT.bar, 17);
-        done();
-      };
-      script.src = new URL('./tests/imports/star.js', document.baseURI);
-      document.head.appendChild(script);
+      })
+      .then(done, done);
     });
   });
+
+  describe('import *', function(){
+    this.timeout(5000);
+
+    beforeEach(function(){
+      delete self.RESULT;
+    });
+
+    it('works', function(done){
+      importDynamic('./tests/imports/star.js')
+      .then(function(){
+        assert.equal(self.RESULT.foo, 'bar');
+        assert.equal(self.RESULT.bar, 17);
+      })
+      .then(done, done);
+    });
+  });
+
+  describe('import {member}', function(){
+    this.timeout(5000);
+
+    beforeEach(function(){
+      delete self.RESULT;
+    });
+
+    it('import {a, b} works', function(done){
+      importDynamic('./tests/imports/members.js')
+      .then(function(){
+        assert.equal(self.RESULT.a, 'a');
+        assert.equal(self.RESULT.b, 'b');
+      })
+      .then(done, done);
+    });
+
+    it('import {a as b} works', function(done){
+      importDynamic('./tests/imports/member-alias.js')
+      .then(function(){
+        assert.equal(self.RESULT.a, 'a');
+      })
+      .then(done, done);
+    });
+  });
+
+  describe('import "side-effect.js"', function(){
+    beforeEach(function(){
+      delete self.RESULT;
+    });
+
+    it('works', function(done){
+      importDynamic('./tests/imports/side-effect.js')
+      .then(function(){
+        assert.equal(self.RESULT, 'it worked');
+      })
+      .then(done, done);
+    });
+  });
+
+  describe('import default, {member}', function(){
+    beforeEach(function(){
+      delete self.RESULT;
+    });
+
+    it('works', function(done){
+      importDynamic('./tests/imports/default-and-member.js')
+      .then(function(){
+        assert.equal(self.RESULT.a, 'a');
+        assert.equal(self.RESULT.b, 'b');
+      })
+      .then(done, done);
+    });
+  });
+
+  describe('import default, * as star', function(){
+    beforeEach(function(){
+      delete self.RESULT;
+    });
+
+    it('works', function(done){
+      importDynamic('./tests/imports/default-and-star.js')
+      .then(function(){
+        assert.equal(self.RESULT.a, 'a');
+        assert.equal(self.RESULT.b, 'b');
+        assert.equal(self.RESULT.c, 'c');
+      })
+      .then(done, done);
+    });
+  });
+})();
 </script>
 </template>
 </mocha-test>

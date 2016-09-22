@@ -8702,6 +8702,12 @@ var ImportDeclaration = function(node, state){
           prop: node.imported.name
         };
         break;
+      case 'ImportNamespaceSpecifier':
+        state.specifiers[node.local.name] = {
+          ns: namespaceName,
+          type: 'star'
+        };
+        break;
     }
   });
 
@@ -8759,48 +8765,22 @@ function getNamespaceName(specifiers, state) {
   return namespaceName;
 }
 
-var ExportDefaultDeclaration = function(node, state){
-  state.includeTools = state.includesExports = true;
-  let decl = node.declaration;
-  node.type = 'ExpressionStatement';
-  node.expression = {
-    type: 'CallExpression',
-    callee: {
-      type: 'MemberExpression',
-      object: {
-        type: 'Identifier',
-        name: '_moduleTools'
-      },
-      property: {
-        type: 'Identifier',
-        name: 'namedExport'
-      }
-    },
-    arguments: [{
-      type: 'Literal',
-      value: 'default',
-      raw: "'default'"
-    }, node.declaration]
-  };
-
-  delete node.declaration;
-}
-
-var ExportNamedDeclaration = function(node, state){
-  state.includeTools = state.includesExports = true;
-  let name = getNameFromDeclaration(node.declaration);
-
+var nsAssignment = function(node, name){
   let rightHandSide;
   switch(node.declaration.type) {
     case 'FunctionDeclaration':
+    case 'FunctionExpression':
       rightHandSide = node.declaration;
+      break;
+    case 'AssignmentExpression':
+      rightHandSide = node.declaration.right;
       break;
     default:
       rightHandSide = node.declaration.declarations[0].init;
       break;
   }
 
-  node.type = 'ExpressionStatement';
+  node.type = 'ExpressionStatement',
   node.expression = {
     type: "AssignmentExpression",
     operator: "=",
@@ -8818,28 +8798,20 @@ var ExportNamedDeclaration = function(node, state){
     },
     right: rightHandSide
   };
+}
 
-  /*
-  node.type = 'ExpressionStatement'
-  node.expression = {
-    type: 'CallExpression',
-    callee: {
-      type: 'MemberExpression',
-      object: {
-        type: 'Identifier',
-        name: '_moduleTools'
-      },
-      property: {
-        type: 'Identifier',
-        name: 'namedExport'
-      }
-    },
-      arguments: [{
-      type: 'Literal',
-      value: name,
-      raw: "'" + name + "'"
-    }, node.declaration]
-  };*/
+var ExportDefaultDeclaration = function(node, state){
+  state.includeTools = state.includesExports = true;
+
+  nsAssignment(node, 'default');
+  delete node.declaration;
+}
+
+var ExportNamedDeclaration = function(node, state){
+  state.includeTools = state.includesExports = true;
+  let name = getNameFromDeclaration(node.declaration);
+
+  nsAssignment(node, name);
 
   delete node.declaration;
   delete node.specifiers;
@@ -8858,18 +8830,22 @@ function getNameFromDeclaration(decl) {
 var Identifier = function(node, state){
   let specifier = state.specifiers[node.name];
   if(specifier) {
-    let prop = specifier.type === 'default' ? 'default': specifier.prop;
-    node.type = 'MemberExpression';
-    node.object = {
-      type: 'Identifier',
-      name: specifier.ns
-    };
-    node.property = {
-      type: 'Identifier',
-      name: prop
-    };
-    node.computed = false;
-    delete node.name;
+    if(specifier.type === 'star') {
+      node.name = specifier.ns;
+    } else {
+      let prop = specifier.type === 'default' ? 'default': specifier.prop;
+      node.type = 'MemberExpression';
+      node.object = {
+        type: 'Identifier',
+        name: specifier.ns
+      };
+      node.property = {
+        type: 'Identifier',
+        name: prop
+      };
+      node.computed = false;
+      delete node.name;
+    }
   }
 }
 

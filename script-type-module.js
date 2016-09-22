@@ -2,99 +2,130 @@ __scriptTypeModuleEval = function(src){
   eval(src);
 };
 
-(function(){
-  var moduleMap = {};
-  var importPromises = {};
-  var importExp = /import .+ from ['"](.+)['"]/g;
-  var exportDefaultExp = /export default/;
-  var importFromExp = /import ([A-Za-z0-9]+) from ["'](.+)["']/g;
-  var slice = Array.prototype.slice;
+(function(self){
+  let moduleMap = new Map();
+  let importPromises = new Map();
+  let workPromises = new Map();
+  let forEach = Array.prototype.forEach;
 
-  var tags = slice.call(document.querySelectorAll('script[type=module]'));
-  tags.forEach(importScript);
+  self._importTypeModuleTools = function(url){
+    let namespace = {};
+    moduleMap.set(url, namespace);
+    return {
+      staticImport: function(specifier){
+        let u = new URL(specifier, url).toString();
+        let ns = moduleMap.get(u);
+        return ns;
+      },
+      defaultExport: function(value){
+        namespace.default = value;
+      }
+    };
+  };
+
+  let workerURL = new URL('./worker.js', document.currentScript.src);
+  let worker = new Worker(workerURL);
+
+  function messageWorker(msg) {
+    worker.postMessage(encode(msg));
+  }
+
+  let messageCallbacks = [];
+  worker.onmessage = function(ev){
+    let msg = decode(ev.data), cb;
+    for(let i = 0, len = messageCallbacks.length; i < len; i++) {
+      cb = messageCallbacks[i];
+      if(cb(msg)) {
+        messageCallbacks.splice(i, 1);
+        break;
+      }
+    }
+  };
+
+  function filterMessages(cb){
+    messageCallbacks.push(cb);
+  }
 
   function importScript(script) {
-    return importModule(script.src);
+    // TODO what about inline modules
+    return importModule(script.src)
+    .then(function(){
+      var ev = new Event('load');
+      script.dispatchEvent(ev);
+    })
+    .then(null, function(err){
+      console.error(err);
+    });
   }
 
-  function importModule(src) {
-    var value = moduleMap[src];
+  function importModule(url) {
+    var value = moduleMap.get(url);
+    var promise;
     if(value === "fetching") {
-      return importPromises[src];
+      promise = importPromises.get(url);
     } else if(typeof value === "object") {
-      return Promise.resolve(value);
-    }
-
-    moduleMap[src] = "fetching";
-
-    return importPromises[src] =
-    fetch(src)
-    .then(function(resp){
-      return resp.text();
-    })
-    .then(function(text){
-      var deps = importsAll(text);
-
-      return Promise.all(
-        deps.map(function(pth){
-          var url = new URL(pth, src).href;
-          return importModule(url);
-        })
-      ).then(function(){
-        return text;
-      });
-    })
-    .then(function(source){
-      // ready to execute
-      source = source
-        .replace(exportDefaultExp, "exports.default = ")
-        .replace(importFromExp, function(str, name, pth){
-          return "var " + name + " = require('" + pth + "').default";
+      promise = Promise.resolve(value);
+    } else {
+      promise = new Promise(function(resolve, reject){
+        messageWorker({
+          type: 'fetch',
+          url: url
         });
-
-      var removeShim = createShim(src);
-      __scriptTypeModuleEval(source + "\n//# sourceURL=" + src);
-      var mod = removeShim();
-      moduleMap[src] = mod.exports;
-    });
+        filterMessages(function(msg){
+          if(msg.type === 'fetch' && msg.url === url) {
+            handleFetch(msg, resolve, reject);
+            return true;
+          }
+        });
+      });
+      importPromises.set(url, promise);
+    }
+    return promise;
   }
 
-  function importsAll(str) {
-    return regexAll(importExp, str).map(function(res){
-      return res[1];
-    });
+  function decode(msg){
+    return JSON.parse(msg);
   }
 
-  function regexAll(exp, str){
-    var results = [];
-    var res = exp.exec(str);
+  function encode(msg){
+    return JSON.stringify(msg);
+  }
 
-    while(res) {
-      results.push(res);
+  function handleFetch(msg, resolve, reject){
+    let src = msg.src;
+    let deps = msg.deps;
 
-      res = exp.exec(str);
+    function onsuccess(){
+      src += '\n//# sourceURL=' + msg.url;
+      try {
+        __scriptTypeModuleEval(src);
+        resolve();
+      } catch(err){
+        reject(err);
+      }
     }
 
-    exp.lastIndex = 0;
-
-    return results;
+    Promise.all(deps.map(function(url){
+      return importModule(url);
+    }))
+    .then(onsuccess, reject);
   }
 
-  function createShim(base){
-    var mod = window.module = {exports:{}};
-    window.exports = mod.exports;
 
-    window.require = function(pth){
-      var key = new URL(pth, base).href;
-      return moduleMap[key];
-    };
+  let tags = document.querySelectorAll('script[type=module]');
+  forEach.call(tags, importScript);
 
-    return function(){
-      delete window.module;
-      delete window.exports;
-      delete window.require;
-      return mod;
-    };
-  }
-
-})();
+  var mo = new MutationObserver(function(mutations){
+    forEach.call(mutations, function(mutation){
+      forEach.call(mutation.addedNodes, function(el){
+        if(el.nodeName === 'SCRIPT' && el.type === 'module') {
+          importScript(el);
+        }
+      });
+    });
+  });
+  mo.observe(document.documentElement, {
+    childList: true,
+    subtree: true
+  })
+})(window);

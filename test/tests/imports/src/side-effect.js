@@ -1,0 +1,1 @@
+self.RESULT = 'it worked';

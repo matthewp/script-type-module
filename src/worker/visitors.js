@@ -11,7 +11,6 @@ export default {
   FunctionExpression: functionWithLocalState('FunctionExpression'),
   FunctionDeclaration: functionWithLocalState('FunctionDeclaration'),
   ArrowFunctionExpression: functionWithLocalState('ArrowFunctionExpression'),
-  //VariableDeclaration: variableAddToState('var')
   VariableDeclarator: VariableDeclarator
 };
 

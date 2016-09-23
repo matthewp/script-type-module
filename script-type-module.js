@@ -1,5 +1,5 @@
-__scriptTypeModuleEval = function(src){
-  eval(src);
+__scriptTypeModuleEval = function(__moduleSrc){
+  eval(__moduleSrc);
 };
 (function () {
 'use strict';

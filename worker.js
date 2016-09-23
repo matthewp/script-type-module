@@ -8829,7 +8829,7 @@ function getNameFromDeclaration(decl) {
 
 var Identifier = function(node, state){
   let specifier = state.specifiers[node.name];
-  if(specifier) {
+  if(specifier && !hasLocal(state, node.name)) {
     if(specifier.type === 'star') {
       node.name = specifier.ns;
     } else {
@@ -8849,12 +8849,40 @@ var Identifier = function(node, state){
   }
 }
 
+function hasLocal(state, name) {
+  return state.vars && state.vars[name];
+}
+
 var visitors = {
   ExportDefaultDeclaration: ExportDefaultDeclaration,
   ExportNamedDeclaration: ExportNamedDeclaration,
   ImportDeclaration: ImportDeclaration,
-  Identifier: Identifier
+  Identifier: Identifier,
+  FunctionExpression: functionWithLocalState('FunctionExpression'),
+  FunctionDeclaration: functionWithLocalState('FunctionDeclaration'),
+  ArrowFunctionExpression: functionWithLocalState('ArrowFunctionExpression'),
+  //VariableDeclaration: variableAddToState('var')
+  VariableDeclarator: VariableDeclarator
 };
+
+function functionWithLocalState(fnType){
+  return function(node, state, cont){
+    let localState = Object.assign({}, state, {
+      vars: Object.assign({}, state.vars)
+    });
+    if(node.params) {
+      node.params.forEach(function(node){
+        localState.vars[node.name] = true;
+      });
+    }
+    Object.getPrototypeOf(this)[fnType](node, localState, cont);
+  };
+}
+
+function VariableDeclarator(node, state, cont){
+  state.vars[node.id.name] = true;
+  Object.getPrototypeOf(this).VariableDeclarator(node, state, cont);
+}
 
 function addModuleTools(url){
   return {
@@ -8937,10 +8965,11 @@ onmessage = function(ev){
       anonCount: 0,
       deps: [],
       specifiers: {},
+      vars: {},
       url: url
     };
     let ast = acorn$1.parse(src, { sourceType: 'module' });
-    acorn$1.walk.simple(ast, visitors, null, state);
+    acorn$1.walk.recursive(ast, state, visitors);
 
     if(state.includesExports) {
       ast.body.unshift(addModuleNamespace());

@@ -1,6 +1,6 @@
 export default function(node, state){
   let specifier = state.specifiers[node.name];
-  if(specifier) {
+  if(specifier && !hasLocal(state, node.name)) {
     if(specifier.type === 'star') {
       node.name = specifier.ns;
     } else {
@@ -19,3 +19,7 @@ export default function(node, state){
     }
   }
 };
+
+function hasLocal(state, name) {
+  return state.vars && state.vars[name];
+}

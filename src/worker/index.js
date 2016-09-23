@@ -19,10 +19,11 @@ onmessage = function(ev){
       anonCount: 0,
       deps: [],
       specifiers: {},
+      vars: {},
       url: url
     };
     let ast = acorn.parse(src, { sourceType: 'module' });
-    acorn.walk.simple(ast, visitors, null, state);
+    acorn.walk.recursive(ast, state, visitors);
 
     if(state.includesExports) {
       ast.body.unshift(addModuleNamespace());

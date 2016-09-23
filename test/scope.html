@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <title>Test scoping</title>
+  <script src="../script-type-module.js" defer></script>
+  <script src="../node_modules/webcomponents.js/webcomponents-lite.js" defer></script>
+  <link rel="import" href="../node_modules/mocha-test/mocha-test.html" defer>
+</head>
+<body>
+  <div id="host"></div>
+<mocha-test>
+<template>
+<script>
+(function(){
+  let importDynamic = function(specifier){
+    return new Promise(function(resolve, reject){
+      let script = document.createElement('script');
+      script.type = 'module';
+      script.onload = function(){
+        script.parentNode.removeChild(script);
+        resolve();
+      };
+      script.src = new URL(specifier, document.baseURI);
+      document.head.appendChild(script);
+    });
+  };
+
+  describe('Scoping', function(){
+    this.timeout(5000);
+
+    beforeEach(function(){
+      delete self.RESULT;
+    });
+
+    it('Doesn\'t override arguments', function(done){
+      importDynamic('./tests/scope/main.js')
+      .then(function(){
+        assert.equal(self.RESULT.one, 'foo');
+        assert.equal(self.RESULT.two, 'bar');
+        assert.equal(self.RESULT.three, 'qux');
+        assert.equal(self.RESULT.four, 'baz');
+      })
+      .then(done, done);
+    });
+
+    it('Doesn\'t override local variables', function(done){
+      importDynamic('./tests/scope/var.js')
+      .then(function(){
+        assert.equal(self.RESULT.one, 'foo');
+        assert.equal(self.RESULT.two, 'bar');
+        assert.equal(self.RESULT.three, 'baz');
+        assert.equal(self.RESULT.four, 'qux');
+      })
+      .then(done, done);
+    });
+  });
+})();
+</script>
+</template>
+</mocha-test>
+</body>
+</html>

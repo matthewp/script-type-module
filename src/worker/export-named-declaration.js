@@ -1,4 +1,3 @@
-import nsAssignment from './namespace-assignment.js';
 import exportSet from './export-set.js';
 
 export default function(node, state){
@@ -8,7 +7,6 @@ export default function(node, state){
     exportObj(node, state);
   } else {
     let name = getNameFromDeclaration(node.declaration);
-    //nsAssignment(node, name);
     exportSet(node, state, name);
   }
 

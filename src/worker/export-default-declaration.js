@@ -1,9 +1,9 @@
-import nsAssignment from './namespace-assignment.js';
+import exportSet from './export-set.js';
 
 export default function(node, state){
   state.includeTools = state.includesExports = true;
   state.exports.push('default');
 
-  nsAssignment(node, 'default');
+  exportSet(node, state, 'default');
   delete node.declaration;
 };

@@ -9,7 +9,7 @@
     "rollup:window": "rollup -c rollup.config.js -o script-type-module.js src/window/index.js",
     "prep": "cat src/window/eval.js |cat - script-type-module.js > /tmp/out && mv /tmp/out script-type-module.js",
     "build": "npm run build:worker && npm run build:window",
-    "test": "testee test/everything.html test/inline-everything.html test/import-syntax.html test/scope.html --browsers firefox"
+    "test": "testee test/everything.html test/inline-everything.html test/import-syntax.html test/export-syntax.html test/scope.html --browsers firefox"
   },
   "repository": {
     "type": "git",

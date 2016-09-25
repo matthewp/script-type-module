@@ -36,6 +36,12 @@
         assert.equal(self.RESULT.a(), 'a');
         assert.equal(self.RESULT.b, 'b');
         assert.equal(self.RESULT.c, 'c');
+
+        let d = self.RESULT.d;
+        assert.equal(d.a, 'a');
+        assert.equal(d.b, 'b');
+        assert.equal(typeof d.c, 'function');
+        assert.equal(d.c(), 'c');
       })
       .then(done, done);
     });

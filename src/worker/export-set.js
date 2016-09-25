@@ -14,6 +14,7 @@ export default function(node, state, name){
     case 'FunctionDeclaration':
     case 'FunctionExpression':
     case 'Literal':
+    case 'ObjectExpression':
       valueArg = decl;
       break;
     case 'AssignmentExpression':

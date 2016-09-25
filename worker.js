@@ -8677,6 +8677,210 @@ var walk = createCommonjsModule(function (module, exports) {
 
 acorn$1.walk = walk;
 
+var exportSet = function(node, state, name){
+  state.exportNames[name] = true;
+
+  let nameArg = {
+    type: 'Literal',
+    value: name,
+    raw: "'" + name + "'"
+  };
+
+  let valueArg;
+
+  let decl = node.declaration || node;
+  switch(decl.type) {
+    case 'FunctionDeclaration':
+    case 'FunctionExpression':
+    case 'Literal':
+      valueArg = decl;
+      break;
+    case 'AssignmentExpression':
+      valueArg = decl.right;
+      break;
+    default:
+      valueArg = decl.declarations[0].init;
+      // No assignment
+      if(valueArg == null) {
+        valueArg = { type: 'Identifier', name: 'undefined' };
+      }
+      break;
+  }
+
+  node.type = 'ExpressionStatement';
+  node.expression = {
+    type: 'CallExpression',
+    callee: {
+      type: 'MemberExpression',
+      object: {
+        type: 'Identifier',
+        name: '_moduleTools'
+      },
+      property: {
+        type: 'Identifier',
+        name: 'set'
+      },
+      computed: false
+    },
+    arguments: [nameArg, valueArg]
+  };
+}
+
+var AssignmentExpression = function(node, state, cont){
+  if(isExportName(node, state)) {
+    exportSet(node, state, node.left.name);
+    return;
+  }
+  Object.getPrototypeOf(this).AssignmentExpression(node, state, cont);
+}
+
+function isExportName(node, state){
+  let left = node.left;
+
+  return left.type === 'Identifier' && state.exportNames[left.name];
+}
+
+var nsAssignment = function(node, name){
+  let rightHandSide;
+  switch(node.declaration.type) {
+    case 'FunctionDeclaration':
+    case 'FunctionExpression':
+    case 'Literal':
+      rightHandSide = node.declaration;
+      break;
+    case 'AssignmentExpression':
+      rightHandSide = node.declaration.right;
+      break;
+    default:
+      rightHandSide = node.declaration.declarations[0].init;
+      break;
+  }
+
+  node.type = 'ExpressionStatement',
+  node.expression = {
+    type: "AssignmentExpression",
+    operator: "=",
+    left: {
+      type: "MemberExpression",
+      object: {
+        type: "Identifier",
+        name: "_moduleNamespace"
+      },
+      property: {
+        type: "Identifier",
+        name: name
+      },
+      "computed": false
+    },
+    right: rightHandSide
+  };
+}
+
+var ExportDefaultDeclaration = function(node, state){
+  state.includeTools = state.includesExports = true;
+  state.exports.push('default');
+
+  nsAssignment(node, 'default');
+  delete node.declaration;
+}
+
+var ExportNamedDeclaration = function(node, state){
+  state.includeTools = state.includesExports = true;
+
+  if(!node.declaration) {
+    exportObj(node, state);
+  } else {
+    let name = getNameFromDeclaration(node.declaration);
+    //nsAssignment(node, name);
+    exportSet(node, state, name);
+  }
+
+  delete node.declaration;
+  delete node.specifiers;
+}
+
+function getNameFromDeclaration(decl) {
+  switch(decl.type) {
+    case 'FunctionDeclaration':
+    case 'VariableDeclarator':
+      return decl.id.name;
+    case 'VariableDeclaration':
+      return getNameFromDeclaration(decl.declarations[0]);
+  }
+}
+
+function exportObj(node, state) {
+  let objectExpression = {
+    type: 'ObjectExpression',
+    properties: []
+  };
+
+  node.specifiers.forEach(function(specifier){
+    state.exports.push(specifier.exported.name);
+    let property = {
+      types: 'Property',
+      method: false,
+      shorthand: false,
+      computed: false,
+      key: {
+        type: 'Identifier',
+        name: specifier.exported.name
+      },
+      value: {
+        type: 'Identifier',
+        name: specifier.local.name
+      },
+      kind: 'init'
+    };
+    objectExpression.properties.push(property);
+  });
+
+  node.type = 'ExpressionStatement';
+  node.expression = {
+    type: 'CallExpression',
+    callee: {
+      type: 'MemberExpression',
+      object: {
+        type: 'Identifier',
+        name: '_moduleTools'
+      },
+      property: {
+        type: 'Identifier',
+        name: 'set'
+      },
+      computed: false
+    },
+    arguments: [objectExpression]
+  };
+}
+
+var Identifier = function(node, state){
+  let specifier = state.specifiers[node.name];
+
+  if(specifier && !hasLocal(state, node.name)) {
+    if(specifier.type === 'star') {
+      node.name = specifier.ns;
+    } else {
+      let prop = specifier.type === 'default' ? 'default': specifier.prop;
+      node.type = 'MemberExpression';
+      node.object = {
+        type: 'Identifier',
+        name: specifier.ns
+      };
+      node.property = {
+        type: 'Identifier',
+        name: prop
+      };
+      node.computed = false;
+      delete node.name;
+    }
+  }
+}
+
+function hasLocal(state, name) {
+  return state.vars && state.vars[name];
+}
+
 var ImportDeclaration = function(node, state){
   let url = state.url;
   state.includeTools = true;
@@ -8765,95 +8969,8 @@ function getNamespaceName(specifiers, state) {
   return namespaceName;
 }
 
-var nsAssignment = function(node, name){
-  let rightHandSide;
-  switch(node.declaration.type) {
-    case 'FunctionDeclaration':
-    case 'FunctionExpression':
-      rightHandSide = node.declaration;
-      break;
-    case 'AssignmentExpression':
-      rightHandSide = node.declaration.right;
-      break;
-    default:
-      rightHandSide = node.declaration.declarations[0].init;
-      break;
-  }
-
-  node.type = 'ExpressionStatement',
-  node.expression = {
-    type: "AssignmentExpression",
-    operator: "=",
-    left: {
-      type: "MemberExpression",
-      object: {
-        type: "Identifier",
-        name: "_moduleNamespace"
-      },
-      property: {
-        type: "Identifier",
-        name: name
-      },
-      "computed": false
-    },
-    right: rightHandSide
-  };
-}
-
-var ExportDefaultDeclaration = function(node, state){
-  state.includeTools = state.includesExports = true;
-
-  nsAssignment(node, 'default');
-  delete node.declaration;
-}
-
-var ExportNamedDeclaration = function(node, state){
-  state.includeTools = state.includesExports = true;
-  let name = getNameFromDeclaration(node.declaration);
-
-  nsAssignment(node, name);
-
-  delete node.declaration;
-  delete node.specifiers;
-}
-
-function getNameFromDeclaration(decl) {
-  switch(decl.type) {
-    case 'FunctionDeclaration':
-    case 'VariableDeclarator':
-      return decl.id.name;
-    case 'VariableDeclaration':
-      return getNameFromDeclaration(decl.declarations[0]);
-  }
-}
-
-var Identifier = function(node, state){
-  let specifier = state.specifiers[node.name];
-  if(specifier && !hasLocal(state, node.name)) {
-    if(specifier.type === 'star') {
-      node.name = specifier.ns;
-    } else {
-      let prop = specifier.type === 'default' ? 'default': specifier.prop;
-      node.type = 'MemberExpression';
-      node.object = {
-        type: 'Identifier',
-        name: specifier.ns
-      };
-      node.property = {
-        type: 'Identifier',
-        name: prop
-      };
-      node.computed = false;
-      delete node.name;
-    }
-  }
-}
-
-function hasLocal(state, name) {
-  return state.vars && state.vars[name];
-}
-
 var visitors = {
+  AssignmentExpression: AssignmentExpression,
   ExportDefaultDeclaration: ExportDefaultDeclaration,
   ExportNamedDeclaration: ExportNamedDeclaration,
   ImportDeclaration: ImportDeclaration,
@@ -8874,6 +8991,7 @@ function functionWithLocalState(fnType){
         localState.vars[node.name] = true;
       });
     }
+
     Object.getPrototypeOf(this)[fnType](node, localState, cont);
   };
 }
@@ -8963,6 +9081,8 @@ onmessage = function(ev){
     let state = {
       anonCount: 0,
       deps: [],
+      exports: [],
+      exportNames: {},
       specifiers: {},
       vars: {},
       url: url
@@ -8979,8 +9099,9 @@ onmessage = function(ev){
 
     let code = escodegen.generate(ast);
     return {
+      code: code,
       deps: state.deps,
-      code: code
+      exports: state.exports
     };
   })
   .then(function(res){

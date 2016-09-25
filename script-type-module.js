@@ -60,6 +60,17 @@ var addModuleTools = function(moduleMap){
       },
       namedExport: function(name, value){
         namespace[name] = value;
+      },
+      set: function(name, value) {
+        if(typeof name === 'object') {
+          let moduleTools = this;
+          Object.keys(name).forEach(function(key){
+            moduleTools.set(key, name[key]);
+          });
+          return;
+        }
+        namespace[name] = value;
+        return value;
       }
     };
   };

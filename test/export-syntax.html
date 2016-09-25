@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+<head>
+  <title>Test export syntaxes</title>
+  <script src="../script-type-module.js" defer></script>
+  <script src="../node_modules/webcomponents.js/webcomponents-lite.js" defer></script>
+  <link rel="import" href="../node_modules/mocha-test/mocha-test.html" defer>
+</head>
+<body>
+  <div id="host"></div>
+<mocha-test>
+<template>
+<script>
+(function(){
+  let importDynamic = function(specifier){
+    return new Promise(function(resolve, reject){
+      let script = document.createElement('script');
+      script.type = 'module';
+      script.onload = function(){
+        script.parentNode.removeChild(script);
+        resolve();
+      };
+      script.src = new URL(specifier, document.baseURI);
+      document.head.appendChild(script);
+    });
+  };
+
+  describe('export default', function(){
+    beforeEach(function(){
+      delete self.RESULT;
+    });
+
+    it('works', function(done){
+      importDynamic('./tests/exports/default.js')
+      .then(function(){
+        assert.equal(self.RESULT.a(), 'a');
+        assert.equal(self.RESULT.b, 'b');
+        assert.equal(self.RESULT.c, 'c');
+      })
+      .then(done, done);
+    });
+  });
+
+  describe('export let', function(){
+    beforeEach(function(){
+      delete self.RESULT;
+    });
+
+    it('works', function(done){
+      importDynamic('./tests/exports/let.js')
+      .then(function(){
+        assert.equal(self.RESULT.a, 'a');
+        assert.equal(self.RESULT.b, 'b');
+      })
+      .then(done, done);
+    });
+  });
+})();
+</script>
+</template>
+</mocha-test>
+</body>
+</html>

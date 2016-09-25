@@ -18,6 +18,8 @@ onmessage = function(ev){
     let state = {
       anonCount: 0,
       deps: [],
+      exports: [],
+      exportNames: {},
       specifiers: {},
       vars: {},
       url: url
@@ -34,8 +36,9 @@ onmessage = function(ev){
 
     let code = escodegen.generate(ast);
     return {
+      code: code,
       deps: state.deps,
-      code: code
+      exports: state.exports
     };
   })
   .then(function(res){

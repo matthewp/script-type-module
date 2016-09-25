@@ -3,6 +3,7 @@ export default function(node, name){
   switch(node.declaration.type) {
     case 'FunctionDeclaration':
     case 'FunctionExpression':
+    case 'Literal':
       rightHandSide = node.declaration;
       break;
     case 'AssignmentExpression':

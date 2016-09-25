@@ -55,6 +55,20 @@
       .then(done, done);
     });
   });
+
+  describe('export { }', function(){
+    beforeEach(function(){
+      delete self.RESULT;
+    });
+
+    it('export { a as b } works', function(done){
+      importDynamic('./tests/exports/object.js')
+      .then(function(){
+        assert.equal(self.RESULT.b, 'a');
+      })
+      .then(done, done);
+    });
+  });
 })();
 </script>
 </template>

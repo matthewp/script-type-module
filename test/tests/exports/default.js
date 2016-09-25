@@ -6,5 +6,6 @@ import d from './src/default-object.js';
 self.RESULT = {
   a: a,
   b: b,
-  c: c
+  c: c,
+  d: d
 };

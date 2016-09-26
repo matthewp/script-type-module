@@ -1,4 +1,5 @@
 import AssignmentExpression from './assignment-expression.js';
+import ExportAllDeclaration from './export-all-declaration.js';
 import ExportDefaultDeclaration from './export-default-declaration.js';
 import ExportNamedDeclaration from './export-named-declaration.js';
 import Identifier from './identifier.js';
@@ -6,6 +7,7 @@ import ImportDeclaration from './import-declaration.js';
 
 export default {
   AssignmentExpression: AssignmentExpression,
+  ExportAllDeclaration: ExportAllDeclaration,
   ExportDefaultDeclaration: ExportDefaultDeclaration,
   ExportNamedDeclaration: ExportNamedDeclaration,
   ImportDeclaration: ImportDeclaration,

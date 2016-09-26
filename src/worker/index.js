@@ -18,7 +18,8 @@ onmessage = function(ev){
     let state = {
       anonCount: 0,
       deps: [],
-      exports: [],
+      exports: {},
+      exportStars: [],
       exportNames: {},
       specifiers: {},
       vars: {},
@@ -38,12 +39,15 @@ onmessage = function(ev){
     return {
       code: code,
       deps: state.deps,
-      exports: state.exports
+      exports: state.exports,
+      exportStars: state.exportStars
     };
   })
   .then(function(res){
     postMessage(encode({
       type: 'fetch',
+      exports: res.exports,
+      exportStars: res.exportStars,
       deps: res.deps,
       url: url,
       src: res.code

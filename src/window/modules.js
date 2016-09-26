@@ -10,5 +10,12 @@ export class ModuleScript {
     this.url = url;
     this.resolve = resolve;
     this.reject = reject;
+
+    this.values = {};
+    this.namespace = {};
+  }
+
+  set() {
+
   }
 }

@@ -6,8 +6,8 @@ export default function(registry){
       namespace: namespace,
       staticImport: function(specifier){
         let u = new URL(specifier, url).toString();
-        let ns = registry.moduleMap.get(u);
-        return ns;
+        let moduleScript = registry.get(u);
+        return moduleScript.namespace;
       },
       namedExport: function(name, value){
         throw new Error('This is not implemented currently.');

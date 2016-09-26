@@ -1,4 +1,5 @@
 import { a, aB } from './src/from-name.js';
+import { b } from './src/from-as.js';
 
 /**
  * TODO:
@@ -10,5 +11,6 @@ self.RESULT = {
   getA: function(){
     return a;
   },
-  aB: aB
+  aB: aB,
+  b: b
 };

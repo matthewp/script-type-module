@@ -23,7 +23,7 @@ export default class {
         let parentModuleScript = this.moduleScriptMap.get(exp.from);
 
         Object.defineProperty(moduleScript.namespace, name, {
-          get: getValue(parentModuleScript, name)
+          get: getValue(parentModuleScript, exp.local)
         });
       } else {
         Object.defineProperty(moduleScript.namespace, name, {

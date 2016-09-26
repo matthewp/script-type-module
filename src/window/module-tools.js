@@ -2,8 +2,6 @@ export default function(registry){
   self._importTypeModuleTools = function(url){
     let moduleScript = registry.get(url);
     let namespace = moduleScript.namespace;
-
-    registry.moduleMap.set(url, namespace);
     return {
       namespace: namespace,
       staticImport: function(specifier){

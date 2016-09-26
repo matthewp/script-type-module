@@ -73,7 +73,7 @@ if(!hasNativeSupport()) {
       return importModule(url);
     }))
     .then(function(){
-      registry.link(moduleScript, msg.exports);
+      registry.link(moduleScript, msg);
     }, moduleScript.reject);
   }
 

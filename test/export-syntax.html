@@ -99,7 +99,15 @@
 
     describe('export { a as b } from', function(){
       it('Works', function(){
+        console.log(self.RESULT)
         assert.equal(self.RESULT.b, 'a');
+      });
+    });
+
+    describe('export * from', function(){
+      it('Works', function(){
+        let c = self.RESULT.c;
+        assert.equal(c.a, 'ab');
       });
     });
   });

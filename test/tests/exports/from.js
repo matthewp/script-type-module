@@ -1,5 +1,6 @@
 import { a, aB } from './src/from-name.js';
 import { b } from './src/from-as.js';
+import * as c from './src/from-star.js';
 
 /**
  * TODO:
@@ -12,5 +13,6 @@ self.RESULT = {
     return a;
   },
   aB: aB,
-  b: b
+  b: b,
+  c: c
 };

@@ -51,8 +51,6 @@ var addModuleTools = function(registry){
   self._importTypeModuleTools = function(url){
     let moduleScript = registry.get(url);
     let namespace = moduleScript.namespace;
-
-    registry.moduleMap.set(url, namespace);
     return {
       namespace: namespace,
       staticImport: function(specifier){
@@ -159,7 +157,10 @@ var Registry = class {
     this.moduleScriptMap.set(url, moduleScript);
   }
 
-  addExports(moduleScript, exports) {
+  addExports(moduleScript, msg) {
+    let exports = msg.exports;
+    let exportStars = msg.exportStars;
+
     Object.keys(exports).forEach(name => {
       let exp = exports[name];
       if(exp.from) {
@@ -174,10 +175,21 @@ var Registry = class {
         });
       }
     });
+
+    exportStars.forEach(from => {
+      let parentModuleScript = this.moduleScriptMap.get(from);
+      let props = Object.getOwnPropertyNames(parentModuleScript.namespace);
+      props.forEach(function(prop){
+        Object.defineProperty(moduleScript.namespace, prop, {
+          get: getValue(parentModuleScript, prop)
+        });
+      });
+    });
   }
 
   link(moduleScript, exports) {
     this.addExports(moduleScript, exports);
+    this.moduleMap.set(moduleScript.url, moduleScript.namespace);
 
     execute(moduleScript);
   }
@@ -251,7 +263,7 @@ if(!hasNativeSupport()) {
       return importModule(url);
     }))
     .then(function(){
-      registry.link(moduleScript, msg.exports);
+      registry.link(moduleScript, msg);
     }, moduleScript.reject);
   }
 

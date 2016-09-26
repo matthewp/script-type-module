@@ -8741,6 +8741,16 @@ function isExportName(node, state){
   return left.type === 'Identifier' && state.exportNames[left.name];
 }
 
+var ExportAllDeclaration = function(node, state){
+  let source = node.source;
+  let fromUrl = new URL(source.value, state.url).toString();
+  state.deps.push(fromUrl);
+  state.exportStars.push(fromUrl);
+
+  node.type = 'EmptyStatement';
+  delete node.source;
+}
+
 var ExportDefaultDeclaration = function(node, state, cont){
   state.includeTools = state.includesExports = true;
   state.exports.default = {};
@@ -8963,6 +8973,7 @@ function getNamespaceName(specifiers, state) {
 
 var visitors = {
   AssignmentExpression: AssignmentExpression,
+  ExportAllDeclaration: ExportAllDeclaration,
   ExportDefaultDeclaration: ExportDefaultDeclaration,
   ExportNamedDeclaration: ExportNamedDeclaration,
   ImportDeclaration: ImportDeclaration,
@@ -9074,6 +9085,7 @@ onmessage = function(ev){
       anonCount: 0,
       deps: [],
       exports: {},
+      exportStars: [],
       exportNames: {},
       specifiers: {},
       vars: {},
@@ -9093,13 +9105,15 @@ onmessage = function(ev){
     return {
       code: code,
       deps: state.deps,
-      exports: state.exports
+      exports: state.exports,
+      exportStars: state.exportStars
     };
   })
   .then(function(res){
     postMessage(encode({
       type: 'fetch',
       exports: res.exports,
+      exportStars: res.exportStars,
       deps: res.deps,
       url: url,
       src: res.code

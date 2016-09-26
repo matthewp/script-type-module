@@ -16,7 +16,10 @@ export default class {
     this.moduleScriptMap.set(url, moduleScript);
   }
 
-  addExports(moduleScript, exports) {
+  addExports(moduleScript, msg) {
+    let exports = msg.exports;
+    let exportStars = msg.exportStars;
+
     Object.keys(exports).forEach(name => {
       let exp = exports[name];
       if(exp.from) {
@@ -31,10 +34,21 @@ export default class {
         });
       }
     });
+
+    exportStars.forEach(from => {
+      let parentModuleScript = this.moduleScriptMap.get(from);
+      let props = Object.getOwnPropertyNames(parentModuleScript.namespace);
+      props.forEach(function(prop){
+        Object.defineProperty(moduleScript.namespace, prop, {
+          get: getValue(parentModuleScript, prop)
+        });
+      });
+    });
   }
 
   link(moduleScript, exports) {
     this.addExports(moduleScript, exports);
+    this.moduleMap.set(moduleScript.url, moduleScript.namespace);
 
     execute(moduleScript);
   }

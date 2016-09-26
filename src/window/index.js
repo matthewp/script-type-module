@@ -7,7 +7,7 @@ import {
 } from '../msg.js';
 import addModuleTools from './module-tools.js';
 import spawn from './spawn.js';
-import { ModuleScript } from './modules.js';
+import { ModuleScript, ModuleTree } from './modules.js';
 import { importExisting, observe } from './dom.js';
 import Registry from './registry.js';
 
@@ -26,7 +26,6 @@ if(!hasNativeSupport()) {
     let url = "" + (script.src || new URL('./!anonymous_' + anonCount++, document.baseURI));
     let src = script.src ? undefined : script.textContent;
 
-    // TODO what about inline modules
     return importModule(url, src)
     .then(function(){
       var ev = new Event('load');
@@ -37,16 +36,26 @@ if(!hasNativeSupport()) {
     });
   }
 
-  function importModule(url, src) {
-    var value = registry.moduleMap.get(url);
-    var promise;
-    if(value === "fetching") {
-      promise = registry.importPromises.get(url);
-    } else if(typeof value === "object") {
-      promise = Promise.resolve(value);
-    } else {
+  function importModule(url, src){
+    let tree = new ModuleTree();
+
+    return fetchModule(url, src, tree)
+    .then(function(moduleScript){
+      return tree.fetchPromise.then(function(){
+        return moduleScript;
+      });
+    })
+    .then(function(moduleScript){
+      registry.link(moduleScript);
+    });
+  }
+
+  function fetchModule(url, src, tree) {
+    var promise = registry.fetchPromises.get(url);
+    if(!promise) {
       promise = new Promise(function(resolve, reject){
-        let moduleScript = new ModuleScript(url, resolve, reject);
+        let moduleScript = new ModuleScript(url, resolve, reject, tree);
+        tree.increment();
         send(worker, {
           type: 'fetch',
           url: url,
@@ -55,26 +64,24 @@ if(!hasNativeSupport()) {
         registry.add(moduleScript);
         filter(function(msg){
           if(msg.type === 'fetch' && msg.url === url) {
-            handleFetch(msg, moduleScript);
+            moduleScript.addMessage(msg);
+            fetchTree(moduleScript, tree);
+            moduleScript.complete();
             return true;
           }
         });
       });
-      registry.importPromises.set(url, promise);
+      registry.fetchPromises.set(url, promise);
     }
     return promise;
   }
 
-  function handleFetch(msg, moduleScript){
-    let src = moduleScript.code = msg.src;
-    let deps = msg.deps;
-
-    Promise.all(deps.map(function(url){
-      return importModule(url);
-    }))
-    .then(function(){
-      registry.link(moduleScript, msg);
-    }, moduleScript.reject);
+  function fetchTree(moduleScript, tree) {
+    let deps = moduleScript.fetchMessage.deps;
+    let promises = deps.map(function(url){
+      return fetchModule(url, null, tree);
+    });
+    return Promise.all(promises);
   }
 
   importExisting(importScript);

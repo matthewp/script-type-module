@@ -55,8 +55,8 @@ var addModuleTools = function(registry){
       namespace: namespace,
       staticImport: function(specifier){
         let u = new URL(specifier, url).toString();
-        let ns = registry.moduleMap.get(u);
-        return ns;
+        let moduleScript = registry.get(u);
+        return moduleScript.namespace;
       },
       namedExport: function(name, value){
         throw new Error('This is not implemented currently.');
@@ -84,25 +84,80 @@ var spawn = function(){
   return new Worker(workerURL);
 }
 
+var execute = function({ code, url, resolve, reject }){
+  code += '\n//# sourceURL=' + url;
+  try {
+    __scriptTypeModuleEval(code);
+    resolve();
+  } catch(err){
+    reject(err);
+  }
+}
+
+class ModuleTree {
+  constructor() {
+    this.count = 0;
+    this.fetchPromise = new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+    })
+  }
+
+  increment() {
+    this.count++;
+  }
+
+  decrement() {
+    this.count--;
+    if(this.count === 0) {
+      this.resolve();
+    }
+  }
+}
+
 class ModuleRecord {
   constructor() {
     this.requestedModules = null;
+    this.instantiationStatus = 'uninstantiated';
   }
 }
 
 class ModuleScript {
-  constructor(url, resolve, reject){
+  constructor(url, resolve, reject, tree){
     this.moduleRecord = new ModuleRecord();
+    this.tree = tree;
     this.url = url;
     this.resolve = resolve;
     this.reject = reject;
 
+    this.fetchMessage = null;
     this.values = {};
     this.namespace = {};
   }
 
-  set() {
+  addMessage(msg) {
+    this.fetchMessage = msg;
+    this.code = msg.src;
+    this.deps = msg.deps;
+  }
 
+  complete() {
+    this.resolve(this);
+    this.tree.decrement();
+  }
+
+  isDepOf(moduleScript) {
+    return moduleScript.deps.indexOf(this.url) !== -1;
+  }
+
+  instantiate() {
+    try {
+      execute(this);
+      this.moduleRecord.instantiationStatus = 'instantiated';
+    } catch(err) {
+      this.moduleRecord.instantiationStatus = 'errored';
+      throw err;
+    }
   }
 }
 
@@ -131,21 +186,11 @@ function observe(importScript) {
   return mo;
 }
 
-var execute = function({ code, url, resolve, reject }){
-  code += '\n//# sourceURL=' + url;
-  try {
-    __scriptTypeModuleEval(code);
-    resolve();
-  } catch(err){
-    reject(err);
-  }
-}
-
 var Registry = class {
   constructor() {
     this.moduleMap = new Map();
     this.moduleScriptMap = new Map();
-    this.importPromises = new Map();
+    this.fetchPromises = new Map();
   }
 
   get(url) {
@@ -157,7 +202,8 @@ var Registry = class {
     this.moduleScriptMap.set(url, moduleScript);
   }
 
-  addExports(moduleScript, msg) {
+  addExports(moduleScript) {
+    let msg = moduleScript.fetchMessage;
     let exports = msg.exports;
     let exportStars = msg.exportStars;
 
@@ -187,11 +233,29 @@ var Registry = class {
     });
   }
 
-  link(moduleScript, exports) {
-    this.addExports(moduleScript, exports);
-    this.moduleMap.set(moduleScript.url, moduleScript.namespace);
+  link(moduleScript) {
+    let deps = moduleScript.deps;
+    deps.forEach(depUrl => {
+      let depModuleScript = this.get(depUrl);
+      if(depModuleScript.moduleRecord.instantiationStatus === 'uninstantiated') {
+        // Circular deps
+        if(moduleScript.isDepOf(depModuleScript)) {
+          // Go ahead and instantiate self
+          this.instantiate(moduleScript);
+        }
+        this.link(depModuleScript);
+      }
+    });
 
-    execute(moduleScript);
+    this.instantiate(moduleScript);
+  }
+
+  instantiate(moduleScript) {
+    if(moduleScript.moduleRecord.instantiationStatus === 'uninstantiated') {
+      this.addExports(moduleScript);
+      this.moduleMap.set(moduleScript.url, moduleScript.namespace);
+      moduleScript.instantiate();
+    }
   }
 }
 
@@ -216,7 +280,6 @@ if(!hasNativeSupport()) {
     let url = "" + (script.src || new URL('./!anonymous_' + anonCount++, document.baseURI));
     let src = script.src ? undefined : script.textContent;
 
-    // TODO what about inline modules
     return importModule(url, src)
     .then(function(){
       var ev = new Event('load');
@@ -227,16 +290,26 @@ if(!hasNativeSupport()) {
     });
   }
 
-  function importModule(url, src) {
-    var value = registry.moduleMap.get(url);
-    var promise;
-    if(value === "fetching") {
-      promise = registry.importPromises.get(url);
-    } else if(typeof value === "object") {
-      promise = Promise.resolve(value);
-    } else {
+  function importModule(url, src){
+    let tree = new ModuleTree();
+
+    return fetchModule(url, src, tree)
+    .then(function(moduleScript){
+      return tree.fetchPromise.then(function(){
+        return moduleScript;
+      });
+    })
+    .then(function(moduleScript){
+      registry.link(moduleScript);
+    });
+  }
+
+  function fetchModule(url, src, tree) {
+    var promise = registry.fetchPromises.get(url);
+    if(!promise) {
       promise = new Promise(function(resolve, reject){
-        let moduleScript = new ModuleScript(url, resolve, reject);
+        let moduleScript = new ModuleScript(url, resolve, reject, tree);
+        tree.increment();
         send(worker, {
           type: 'fetch',
           url: url,
@@ -245,26 +318,24 @@ if(!hasNativeSupport()) {
         registry.add(moduleScript);
         filter(function(msg){
           if(msg.type === 'fetch' && msg.url === url) {
-            handleFetch(msg, moduleScript);
+            moduleScript.addMessage(msg);
+            fetchTree(moduleScript, tree);
+            moduleScript.complete();
             return true;
           }
         });
       });
-      registry.importPromises.set(url, promise);
+      registry.fetchPromises.set(url, promise);
     }
     return promise;
   }
 
-  function handleFetch(msg, moduleScript){
-    let src = moduleScript.code = msg.src;
-    let deps = msg.deps;
-
-    Promise.all(deps.map(function(url){
-      return importModule(url);
-    }))
-    .then(function(){
-      registry.link(moduleScript, msg);
-    }, moduleScript.reject);
+  function fetchTree(moduleScript, tree) {
+    let deps = moduleScript.fetchMessage.deps;
+    let promises = deps.map(function(url){
+      return fetchModule(url, null, tree);
+    });
+    return Promise.all(promises);
   }
 
   importExisting(importScript);

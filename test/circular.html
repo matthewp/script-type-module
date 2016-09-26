@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+  <title>Test circular deps</title>
+  <script src="../script-type-module.js" defer></script>
+  <script src="../node_modules/webcomponents.js/webcomponents-lite.js" defer></script>
+  <link rel="import" href="../node_modules/mocha-test/mocha-test.html" defer>
+</head>
+<body>
+  <div id="host"></div>
+<mocha-test>
+<template>
+<script>
+(function(){
+  let importDynamic = function(specifier){
+    return new Promise(function(resolve, reject){
+      let script = document.createElement('script');
+      script.type = 'module';
+      script.onload = function(){
+        script.parentNode.removeChild(script);
+        resolve();
+      };
+      script.src = new URL(specifier, document.baseURI);
+      document.head.appendChild(script);
+    });
+  };
+
+  describe('circular deps', function(){
+    beforeEach(function(){
+      delete self.RESULT;
+    });
+
+    it('basics works', function(done){
+      importDynamic('./tests/circular/basics.js')
+      .then(function(){
+        let r = self.RESULT;
+        assert.equal(r.a(), 'a');
+        assert.equal(r.b(), 'b');
+        assert.equal(r.aC(), 'b');
+        assert.equal(r.bC(), 'a');
+      })
+      .then(done, done);
+    });
+  });
+})();
+</script>
+</template>
+</mocha-test>
+</body>
+</html>

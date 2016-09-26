@@ -4,7 +4,7 @@ export default class {
   constructor() {
     this.moduleMap = new Map();
     this.moduleScriptMap = new Map();
-    this.importPromises = new Map();
+    this.fetchPromises = new Map();
   }
 
   get(url) {
@@ -16,7 +16,8 @@ export default class {
     this.moduleScriptMap.set(url, moduleScript);
   }
 
-  addExports(moduleScript, msg) {
+  addExports(moduleScript) {
+    let msg = moduleScript.fetchMessage;
     let exports = msg.exports;
     let exportStars = msg.exportStars;
 
@@ -46,11 +47,29 @@ export default class {
     });
   }
 
-  link(moduleScript, exports) {
-    this.addExports(moduleScript, exports);
-    this.moduleMap.set(moduleScript.url, moduleScript.namespace);
+  link(moduleScript) {
+    let deps = moduleScript.deps;
+    deps.forEach(depUrl => {
+      let depModuleScript = this.get(depUrl);
+      if(depModuleScript.moduleRecord.instantiationStatus === 'uninstantiated') {
+        // Circular deps
+        if(moduleScript.isDepOf(depModuleScript)) {
+          // Go ahead and instantiate self
+          this.instantiate(moduleScript);
+        }
+        this.link(depModuleScript);
+      }
+    });
 
-    execute(moduleScript);
+    this.instantiate(moduleScript);
+  }
+
+  instantiate(moduleScript) {
+    if(moduleScript.moduleRecord.instantiationStatus === 'uninstantiated') {
+      this.addExports(moduleScript);
+      this.moduleMap.set(moduleScript.url, moduleScript.namespace);
+      moduleScript.instantiate();
+    }
   }
 };
 

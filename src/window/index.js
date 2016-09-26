@@ -6,21 +6,19 @@ import {
   send
 } from '../msg.js';
 import addModuleTools from './module-tools.js';
-import execute from './execute.js';
 import spawn from './spawn.js';
 import { ModuleScript } from './modules.js';
 import { importExisting, observe } from './dom.js';
+import Registry from './registry.js';
 
 if(!hasNativeSupport()) {
   let worker = spawn();
 
-  let moduleMap = new Map();
-  let importPromises = new Map();
-  let workPromises = new Map();
+  let registry = new Registry();
   let forEach = Array.prototype.forEach;
   let anonCount = 0;
 
-  addModuleTools(moduleMap);
+  addModuleTools(registry);
 
   let filter = listen(worker);
 
@@ -40,10 +38,10 @@ if(!hasNativeSupport()) {
   }
 
   function importModule(url, src) {
-    var value = moduleMap.get(url);
+    var value = registry.moduleMap.get(url);
     var promise;
     if(value === "fetching") {
-      promise = importPromises.get(url);
+      promise = registry.importPromises.get(url);
     } else if(typeof value === "object") {
       promise = Promise.resolve(value);
     } else {
@@ -54,6 +52,7 @@ if(!hasNativeSupport()) {
           url: url,
           src: src
         });
+        registry.add(moduleScript);
         filter(function(msg){
           if(msg.type === 'fetch' && msg.url === url) {
             handleFetch(msg, moduleScript);
@@ -61,7 +60,7 @@ if(!hasNativeSupport()) {
           }
         });
       });
-      importPromises.set(url, promise);
+      registry.importPromises.set(url, promise);
     }
     return promise;
   }
@@ -74,7 +73,7 @@ if(!hasNativeSupport()) {
       return importModule(url);
     }))
     .then(function(){
-      execute(moduleScript);
+      registry.link(moduleScript, msg.exports);
     }, moduleScript.reject);
   }
 

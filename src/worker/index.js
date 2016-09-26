@@ -18,7 +18,7 @@ onmessage = function(ev){
     let state = {
       anonCount: 0,
       deps: [],
-      exports: [],
+      exports: {},
       exportNames: {},
       specifiers: {},
       vars: {},
@@ -44,6 +44,7 @@ onmessage = function(ev){
   .then(function(res){
     postMessage(encode({
       type: 'fetch',
+      exports: res.exports,
       deps: res.deps,
       url: url,
       src: res.code

@@ -8741,26 +8741,33 @@ function isExportName(node, state){
   return left.type === 'Identifier' && state.exportNames[left.name];
 }
 
-var ExportDefaultDeclaration = function(node, state){
+var ExportDefaultDeclaration = function(node, state, cont){
   state.includeTools = state.includesExports = true;
-  state.exports.push('default');
+  state.exports.default = {};
 
   exportSet(node, state, 'default');
   delete node.declaration;
+
+  cont(node, state);
 }
 
-var ExportNamedDeclaration = function(node, state){
-  state.includeTools = state.includesExports = true;
+var ExportNamedDeclaration = function(node, state, cont){
+  state.includeTools = true;
 
-  if(!node.declaration) {
+  if(node.source) {
+    exportFrom(node, state);
+  } else if(!node.declaration) {
     exportObj(node, state);
   } else {
     let name = getNameFromDeclaration(node.declaration);
     exportSet(node, state, name);
+    state.exports[name] = {};
   }
 
   delete node.declaration;
   delete node.specifiers;
+
+  cont(node, state);
 }
 
 function getNameFromDeclaration(decl) {
@@ -8780,9 +8787,10 @@ function exportObj(node, state) {
   };
 
   node.specifiers.forEach(function(specifier){
-    state.exports.push(specifier.exported.name);
+    state.exports[specifier.exported.name] = {};
+
     let property = {
-      types: 'Property',
+      type: 'Property',
       method: false,
       shorthand: false,
       computed: false,
@@ -8816,6 +8824,26 @@ function exportObj(node, state) {
     },
     arguments: [objectExpression]
   };
+}
+
+function exportFrom(node, state){
+  let source = node.source;
+  let fromUrl = new URL(source.value, state.url).toString();
+  state.deps.push(fromUrl);
+
+  let specifiers = node.specifiers || [];
+  specifiers.forEach(function(specifier){
+    let local = specifier.local.name;
+    let exported = specifier.exported.name;
+
+    state.exports[exported] = {
+      from: fromUrl,
+      local: local
+    };
+  });
+
+  node.type = 'EmptyStatement';
+  delete node.source;
 }
 
 var Identifier = function(node, state){
@@ -9045,7 +9073,7 @@ onmessage = function(ev){
     let state = {
       anonCount: 0,
       deps: [],
-      exports: [],
+      exports: {},
       exportNames: {},
       specifiers: {},
       vars: {},
@@ -9071,6 +9099,7 @@ onmessage = function(ev){
   .then(function(res){
     postMessage(encode({
       type: 'fetch',
+      exports: res.exports,
       deps: res.deps,
       url: url,
       src: res.code

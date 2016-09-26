@@ -47,19 +47,22 @@ function listen(worker){
   };
 }
 
-var addModuleTools = function(moduleMap){
+var addModuleTools = function(registry){
   self._importTypeModuleTools = function(url){
-    let namespace = {};
-    moduleMap.set(url, namespace);
+    let moduleScript = registry.get(url);
+    let namespace = moduleScript.namespace;
+
+    registry.moduleMap.set(url, namespace);
     return {
       namespace: namespace,
       staticImport: function(specifier){
         let u = new URL(specifier, url).toString();
-        let ns = moduleMap.get(u);
+        let ns = registry.moduleMap.get(u);
         return ns;
       },
       namedExport: function(name, value){
-        namespace[name] = value;
+        throw new Error('This is not implemented currently.');
+        //namespace[name] = value;
       },
       set: function(name, value) {
         if(typeof name === 'object') {
@@ -69,21 +72,11 @@ var addModuleTools = function(moduleMap){
           });
           return;
         }
-        namespace[name] = value;
+        moduleScript.values[name] = value;
         return value;
       }
     };
   };
-}
-
-var execute = function({ code, url, resolve, reject }){
-  code += '\n//# sourceURL=' + url;
-  try {
-    __scriptTypeModuleEval(code);
-    resolve();
-  } catch(err){
-    reject(err);
-  }
 }
 
 // TODO saving this space in case I want to support multiple workers
@@ -105,6 +98,13 @@ class ModuleScript {
     this.url = url;
     this.resolve = resolve;
     this.reject = reject;
+
+    this.values = {};
+    this.namespace = {};
+  }
+
+  set() {
+
   }
 }
 
@@ -133,16 +133,70 @@ function observe(importScript) {
   return mo;
 }
 
+var execute = function({ code, url, resolve, reject }){
+  code += '\n//# sourceURL=' + url;
+  try {
+    __scriptTypeModuleEval(code);
+    resolve();
+  } catch(err){
+    reject(err);
+  }
+}
+
+var Registry = class {
+  constructor() {
+    this.moduleMap = new Map();
+    this.moduleScriptMap = new Map();
+    this.importPromises = new Map();
+  }
+
+  get(url) {
+    return this.moduleScriptMap.get(url);
+  }
+
+  add(moduleScript) {
+    let url = moduleScript.url;
+    this.moduleScriptMap.set(url, moduleScript);
+  }
+
+  addExports(moduleScript, exports) {
+    Object.keys(exports).forEach(name => {
+      let exp = exports[name];
+      if(exp.from) {
+        let parentModuleScript = this.moduleScriptMap.get(exp.from);
+
+        Object.defineProperty(moduleScript.namespace, name, {
+          get: getValue(parentModuleScript, name)
+        });
+      } else {
+        Object.defineProperty(moduleScript.namespace, name, {
+          get: getValue(moduleScript, name)
+        });
+      }
+    });
+  }
+
+  link(moduleScript, exports) {
+    this.addExports(moduleScript, exports);
+
+    execute(moduleScript);
+  }
+}
+
+function getValue(moduleScript, name, par) {
+  return function(){
+    return moduleScript.values[name];
+  };
+}
+
 if(!hasNativeSupport()) {
   let worker = spawn();
 
-  let moduleMap = new Map();
-  let importPromises = new Map();
-  let workPromises = new Map();
+  let registry = new Registry();
   let forEach = Array.prototype.forEach;
   let anonCount = 0;
 
-  addModuleTools(moduleMap);
+  addModuleTools(registry);
 
   let filter = listen(worker);
 
@@ -162,10 +216,10 @@ if(!hasNativeSupport()) {
   }
 
   function importModule(url, src) {
-    var value = moduleMap.get(url);
+    var value = registry.moduleMap.get(url);
     var promise;
     if(value === "fetching") {
-      promise = importPromises.get(url);
+      promise = registry.importPromises.get(url);
     } else if(typeof value === "object") {
       promise = Promise.resolve(value);
     } else {
@@ -176,6 +230,7 @@ if(!hasNativeSupport()) {
           url: url,
           src: src
         });
+        registry.add(moduleScript);
         filter(function(msg){
           if(msg.type === 'fetch' && msg.url === url) {
             handleFetch(msg, moduleScript);
@@ -183,7 +238,7 @@ if(!hasNativeSupport()) {
           }
         });
       });
-      importPromises.set(url, promise);
+      registry.importPromises.set(url, promise);
     }
     return promise;
   }
@@ -196,7 +251,7 @@ if(!hasNativeSupport()) {
       return importModule(url);
     }))
     .then(function(){
-      execute(moduleScript);
+      registry.link(moduleScript, msg.exports);
     }, moduleScript.reject);
   }
 

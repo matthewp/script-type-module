@@ -1,16 +1,19 @@
-export default function(moduleMap){
+export default function(registry){
   self._importTypeModuleTools = function(url){
-    let namespace = {};
-    moduleMap.set(url, namespace);
+    let moduleScript = registry.get(url);
+    let namespace = moduleScript.namespace;
+
+    registry.moduleMap.set(url, namespace);
     return {
       namespace: namespace,
       staticImport: function(specifier){
         let u = new URL(specifier, url).toString();
-        let ns = moduleMap.get(u);
+        let ns = registry.moduleMap.get(u);
         return ns;
       },
       namedExport: function(name, value){
-        namespace[name] = value;
+        throw new Error('This is not implemented currently.');
+        //namespace[name] = value;
       },
       set: function(name, value) {
         if(typeof name === 'object') {
@@ -20,7 +23,7 @@ export default function(moduleMap){
           });
           return;
         }
-        namespace[name] = value;
+        moduleScript.values[name] = value;
         return value;
       }
     };

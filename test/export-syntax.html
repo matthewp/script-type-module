@@ -75,6 +75,28 @@
       .then(done, done);
     });
   });
+
+  describe('export from', function(){
+    describe('export { } from', function(){
+      before(function(done){
+        delete self.RESULT;
+
+        importDynamic('./tests/exports/from.js')
+        .then(function(){
+          done();
+        });
+      });
+
+      it('Names are re-exported', function(){
+        assert.equal(self.RESULT.getA(), 'a');
+      });
+
+      it('Bindings are honored', function(){
+        self.RESULT.aB();
+        assert.equal(self.RESULT.getA(), 'ab');
+      });
+    });
+  });
 })();
 </script>
 </template>

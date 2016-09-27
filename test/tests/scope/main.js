@@ -25,3 +25,16 @@ let baz = function(foo){
 };
 
 baz(() => 'baz');
+
+class Thing {
+  constructor() {
+    result.five = foo();
+  }
+
+  another(foo) {
+    result.six = foo();
+  }
+}
+
+let obj = new Thing();
+obj.another(() => 'quux');

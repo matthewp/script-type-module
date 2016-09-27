@@ -3,6 +3,7 @@ import acorn from './acorn.js';
 import visitors from './visitors.js';
 import { addModuleTools, addModuleNamespace } from './module-tools.js';
 import { decode, encode } from '../msg.js';
+import './source-maps.js';
 
 onmessage = function(ev){
   let msg = decode(ev.data);
@@ -25,7 +26,11 @@ onmessage = function(ev){
       vars: {},
       url: url
     };
-    let ast = acorn.parse(src, { sourceType: 'module' });
+    let ast = acorn.parse(src, {
+      sourceType: 'module',
+      locations: true,
+      sourceFile: url
+    });
     acorn.walk.recursive(ast, state, visitors);
 
     if(state.includesExports) {
@@ -35,12 +40,16 @@ onmessage = function(ev){
       ast.body.unshift(addModuleTools(url));
     }
 
-    let code = escodegen.generate(ast);
+    let result = escodegen.generate(ast, {
+      sourceMap: true,
+      sourceMapWithCode: true
+    });
     return {
-      code: code,
+      code: result.code,
       deps: state.deps,
       exports: state.exports,
-      exportStars: state.exportStars
+      exportStars: state.exportStars,
+      map: result.map.toJSON()
     };
   })
   .then(function(res){
@@ -50,7 +59,8 @@ onmessage = function(ev){
       exportStars: res.exportStars,
       deps: res.deps,
       url: url,
-      src: res.code
+      src: res.code,
+      map: res.map
     }));
   });
 }

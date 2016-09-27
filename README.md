@@ -1,17 +1,15 @@
 # &lt;script type=module&gt; - the polyfill!
 
-***Note*** this is a proof of concept only, don't actually try to use it. However, it does demonstrate that the tag can be polyfilled without much code.
+An attempt to build a polyfill for [<script type="module">](https://blog.whatwg.org/js-modules). Because [the waiting](https://www.youtube.com/watch?v=uMyCa35_mOg) is the hardest part.
 
-Currently this only supports:
+This polyfill includes:
 
-* `import a from 'b'` type of imports
-* `export default function()...` type of exports
+* All `import` and `export` forms.
+* Import bindings compliant with the spec; meaning a dependency can update its exported value and your module binding will reflect that change.
+* A web worker architecture that allows for spawning multiple workers for faster load times (experimental).
+* Full source maps.
 
-This is because my regular expressions are very simple ([see here](https://github.com/matthewp/script-type-module/blob/master/script-type-module.js#L8-L9)). If you'd like to contribute, expanding support for all of the various import/export syntaxes would be huge, my regex skills aren't great.
-
-See the `demo/` folder for a working example.
-
-***Also note*** this doesn't attempt to feature detect if the browser supports script type=module (which none do currently) and I'm not sure if feature detecting that is even possible.
+This is alpha-ish software that is tested, but not used for any real projects (yet). Check out the [tests/](https://github.com/matthewp/script-type-module/tree/master/test) folder to see what's been worked on, submit any issues you encounter.
 
 ## Install
 
@@ -22,9 +20,26 @@ npm install script-type-module
 ## Use
 
 ```html
-<script src="./node_modules/script-type-module/script-type-module.js"></script>
+<script src="./node_modules/script-type-module/polyfill.js"></script>
+
 <script type="module" src="./foo.js"></script>
 ```
+
+## FAQ
+
+**Why use this instead of a bundler?**
+
+Bundlers are not great for development workflows. Being able to create new `.html` pages to test out small parts of your application without creating a new build just for that, is a super powerful thing.
+
+**Should I use this in production?**
+
+No! This is primarily meant for better development workflows. Do a real build for production.
+
+**How does this compare to es-module-loader?**
+
+es-module-loader is a polyfill for the in progress [whatwg/loader](https://github.com/whatwg/loader) spec. This spec has been through several revisions going back many years and isn't likely to appear in browsers soon.
+
+This polyfill is based on the already specified `<script type="module">` that is coming to browsers soon (in Edge developer preview already). The hope is that most evergreen browsers will have support within 6 months and this will only be used for testing on older browsers.
 
 ## Licence
 

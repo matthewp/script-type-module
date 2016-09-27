@@ -6,8 +6,8 @@
   "scripts": {
     "build:worker": "rollup -c rollup.config.js -o worker.js src/worker/index.js",
     "build:window": "npm run rollup:window && npm run prep",
-    "rollup:window": "rollup -c rollup.config.js -o script-type-module.js src/window/index.js",
-    "prep": "cat src/window/eval.js |cat - script-type-module.js > /tmp/out && mv /tmp/out script-type-module.js",
+    "rollup:window": "rollup -c rollup.config.js -o polyfill.js src/window/index.js",
+    "prep": "cat src/window/eval.js |cat - polyfill.js > /tmp/out && mv /tmp/out polyfill.js",
     "build": "npm run build:worker && npm run build:window",
     "test": "testee test/everything.html test/inline-everything.html test/import-syntax.html test/export-syntax.html test/scope.html test/circular.html --browsers firefox"
   },
@@ -31,6 +31,7 @@
     "rollup": "^0.36.0",
     "rollup-plugin-commonjs": "^5.0.4",
     "rollup-plugin-node-resolve": "^2.0.0",
+    "source-map": "^0.5.6",
     "webcomponents.js": "^0.7.22"
   }
 }

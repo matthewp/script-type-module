@@ -1,10 +1,5 @@
 import { hasNativeSupport } from './utils.js';
-import {
-  encode,
-  decode,
-  listen,
-  send
-} from '../msg.js';
+import { encode, decode } from '../msg.js';
 import Cluster from './cluster.js';
 import addModuleTools from './module-tools.js';
 import spawn from './spawn.js';

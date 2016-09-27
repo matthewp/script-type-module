@@ -1,6 +1,6 @@
 # &lt;script type=module&gt; - the polyfill!
 
-An attempt to build a polyfill for [<script type="module">](https://blog.whatwg.org/js-modules). Because [the waiting](https://www.youtube.com/watch?v=uMyCa35_mOg) is the hardest part.
+An attempt to build a polyfill for [\<script type="module"\>](https://blog.whatwg.org/js-modules). Because [the waiting](https://www.youtube.com/watch?v=uMyCa35_mOg) is the hardest part.
 
 This polyfill includes:
 

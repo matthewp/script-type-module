@@ -1,5 +1,5 @@
 __scriptTypeModuleEval = function(__moduleSrc){
-  eval(__moduleSrc);
+  new Function(__moduleSrc)();
 };
 (function () {
 'use strict';
@@ -25,26 +25,51 @@ function encode(msg){
   return JSON.stringify(msg);
 }
 
-function send(worker, msg) {
-  worker.postMessage(encode(msg));
-}
+class Cluster {
+  constructor(count){
+    this.count = count;
+    this.workerURL = new URL('./worker.js', document.currentScript.src);
+    this.workers = [];
+    this.spawn();
+  }
 
-function listen(worker){
-  let messageCallbacks = [];
-  worker.onmessage = function(ev){
-    let msg = decode(ev.data), cb;
-    for(let i = 0, len = messageCallbacks.length; i < len; i++) {
-      cb = messageCallbacks[i];
-      if(cb(msg)) {
-        messageCallbacks.splice(i, 1);
-        break;
-      }
+  post(msg, handler) {
+    let worker = this.leastBusy();
+    worker.handlers[msg.url] = handler;
+    worker.postMessage(encode(msg));
+    worker.inProgress++;
+  }
+
+  spawn() {
+    for(var i = 0; i < this.count; i++) {
+      let worker = new Worker(this.workerURL);
+      this.handleMessages(worker);
+      this.workers.push(worker);
     }
-  };
+  }
 
-  return function(cb){
-    messageCallbacks.push(cb);
-  };
+  leastBusy() {
+    this.workers.sort(function(a, b){
+      if(a.inProgress < b.inProgress) {
+        return -1;
+      } else {
+        return 1;
+      }
+    });
+    return this.workers[0];
+  }
+
+  handleMessages(worker) {
+    worker.inProgress = 0;
+    worker.handlers = {};
+
+    worker.onmessage = function(ev){
+      let msg = decode(ev.data);
+      let handler = worker.handlers[msg.url];
+      handler(msg);
+      worker.inProgress--;
+    };
+  }
 }
 
 var addModuleTools = function(registry){
@@ -78,11 +103,6 @@ var addModuleTools = function(registry){
 }
 
 // TODO saving this space in case I want to support multiple workers
-
-var spawn = function(){
-  let workerURL = new URL('./worker.js', document.currentScript.src);
-  return new Worker(workerURL);
-}
 
 var execute = function({ code, url, resolve, reject }){
   code += '\n//# sourceURL=' + url;
@@ -131,6 +151,9 @@ class ModuleScript {
     this.reject = reject;
 
     this.fetchMessage = null;
+    this.deps = null;
+    this.code = null;
+
     this.values = {};
     this.namespace = {};
   }
@@ -266,15 +289,13 @@ function getValue(moduleScript, name, par) {
 }
 
 if(!hasNativeSupport()) {
-  let worker = spawn();
+  let cluster = new Cluster(1);
 
   let registry = new Registry();
   let forEach = Array.prototype.forEach;
   let anonCount = 0;
 
   addModuleTools(registry);
-
-  let filter = listen(worker);
 
   function importScript(script) {
     let url = "" + (script.src || new URL('./!anonymous_' + anonCount++, document.baseURI));
@@ -310,20 +331,17 @@ if(!hasNativeSupport()) {
       promise = new Promise(function(resolve, reject){
         let moduleScript = new ModuleScript(url, resolve, reject, tree);
         tree.increment();
-        send(worker, {
+        let handler = function(msg){
+          moduleScript.addMessage(msg);
+          fetchTree(moduleScript, tree);
+          moduleScript.complete();
+        };
+        cluster.post({
           type: 'fetch',
           url: url,
           src: src
-        });
+        }, handler);
         registry.add(moduleScript);
-        filter(function(msg){
-          if(msg.type === 'fetch' && msg.url === url) {
-            moduleScript.addMessage(msg);
-            fetchTree(moduleScript, tree);
-            moduleScript.complete();
-            return true;
-          }
-        });
       });
       registry.fetchPromises.set(url, promise);
     }
@@ -331,7 +349,7 @@ if(!hasNativeSupport()) {
   }
 
   function fetchTree(moduleScript, tree) {
-    let deps = moduleScript.fetchMessage.deps;
+    let deps = moduleScript.deps;
     let promises = deps.map(function(url){
       return fetchModule(url, null, tree);
     });

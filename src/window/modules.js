@@ -37,6 +37,9 @@ export class ModuleScript {
     this.reject = reject;
 
     this.fetchMessage = null;
+    this.deps = null;
+    this.code = null;
+
     this.values = {};
     this.namespace = {};
   }

@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+<head>
+  <title>Perf test</title>
+</head>
+<body>
+  <h1 id="host">Loading</h1>
+  <script src="../../../script-type-module.js"></script>
+  <script type="module" src="./src/main.js"></script>
+
+  <script>
+  (function(){
+    let script = document.querySelector('script[type=module]');
+    script.onload = function(){
+      host.textContent = 'Done!';
+    };
+  })();
+  </script>
+</body>
+</html>

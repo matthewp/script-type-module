@@ -5,6 +5,7 @@ import {
   listen,
   send
 } from '../msg.js';
+import Cluster from './cluster.js';
 import addModuleTools from './module-tools.js';
 import spawn from './spawn.js';
 import { ModuleScript, ModuleTree } from './modules.js';
@@ -12,15 +13,13 @@ import { importExisting, observe } from './dom.js';
 import Registry from './registry.js';
 
 if(!hasNativeSupport()) {
-  let worker = spawn();
+  let cluster = new Cluster(1);
 
   let registry = new Registry();
   let forEach = Array.prototype.forEach;
   let anonCount = 0;
 
   addModuleTools(registry);
-
-  let filter = listen(worker);
 
   function importScript(script) {
     let url = "" + (script.src || new URL('./!anonymous_' + anonCount++, document.baseURI));
@@ -56,20 +55,17 @@ if(!hasNativeSupport()) {
       promise = new Promise(function(resolve, reject){
         let moduleScript = new ModuleScript(url, resolve, reject, tree);
         tree.increment();
-        send(worker, {
+        let handler = function(msg){
+          moduleScript.addMessage(msg);
+          fetchTree(moduleScript, tree);
+          moduleScript.complete();
+        };
+        cluster.post({
           type: 'fetch',
           url: url,
           src: src
-        });
+        }, handler);
         registry.add(moduleScript);
-        filter(function(msg){
-          if(msg.type === 'fetch' && msg.url === url) {
-            moduleScript.addMessage(msg);
-            fetchTree(moduleScript, tree);
-            moduleScript.complete();
-            return true;
-          }
-        });
       });
       registry.fetchPromises.set(url, promise);
     }
@@ -77,7 +73,7 @@ if(!hasNativeSupport()) {
   }
 
   function fetchTree(moduleScript, tree) {
-    let deps = moduleScript.fetchMessage.deps;
+    let deps = moduleScript.deps;
     let promises = deps.map(function(url){
       return fetchModule(url, null, tree);
     });

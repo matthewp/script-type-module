@@ -1,3 +1,3 @@
 __scriptTypeModuleEval = function(__moduleSrc){
-  eval(__moduleSrc);
+  new Function(__moduleSrc)();
 };

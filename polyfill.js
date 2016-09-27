@@ -104,14 +104,25 @@ var addModuleTools = function(registry){
 
 // TODO saving this space in case I want to support multiple workers
 
-var execute = function({ code, url, resolve, reject }){
-  code += '\n//# sourceURL=' + url;
+var execute = function({ url, code, map, resolve, reject }){
+  if(map) {
+    code += encode$1(map);
+  } else {
+    code += '\n//# sourceURL=' + url;
+  }
+
   try {
     __scriptTypeModuleEval(code);
     resolve();
   } catch(err){
     reject(err);
   }
+}
+
+const prefix = '\n//# source' + 'MappingURL=data:application/json;base64,';
+
+function encode$1(map) {
+  return prefix + btoa(JSON.stringify(map));
 }
 
 class ModuleTree {
@@ -161,6 +172,7 @@ class ModuleScript {
   addMessage(msg) {
     this.fetchMessage = msg;
     this.code = msg.src;
+    this.map = msg.map;
     this.deps = msg.deps;
   }
 

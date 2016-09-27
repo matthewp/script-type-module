@@ -47,6 +47,7 @@ export class ModuleScript {
   addMessage(msg) {
     this.fetchMessage = msg;
     this.code = msg.src;
+    this.map = msg.map;
     this.deps = msg.deps;
   }
 

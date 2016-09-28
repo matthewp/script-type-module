@@ -17,6 +17,16 @@ function hasNativeSupport(){
   return val;
 }
 
+function currentScript() {
+  return document.currentScript || document._currentScript || getCurrentScriptTheHardWay();
+}
+
+function getCurrentScriptTheHardWay() {
+  // Should be more complex than this.
+  var scripts = document.getElementsByTagName('script');
+  return scripts[scripts.length - 1];
+}
+
 function decode(msg){
   return JSON.parse(msg);
 }
@@ -306,6 +316,8 @@ if(!hasNativeSupport()) {
   let registry = new Registry();
   let forEach = Array.prototype.forEach;
   let anonCount = 0;
+  let pollyScript = currentScript();
+  let includeSourceMaps = pollyScript.dataset.noSm == null;
 
   addModuleTools(registry);
 
@@ -351,7 +363,8 @@ if(!hasNativeSupport()) {
         cluster.post({
           type: 'fetch',
           url: url,
-          src: src
+          src: src,
+          includeSourceMaps: includeSourceMaps
         }, handler);
         registry.add(moduleScript);
       });

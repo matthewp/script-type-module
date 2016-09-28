@@ -1,4 +1,4 @@
-import { hasNativeSupport } from './utils.js';
+import { currentScript, hasNativeSupport } from './utils.js';
 import { encode, decode } from '../msg.js';
 import Cluster from './cluster.js';
 import addModuleTools from './module-tools.js';
@@ -13,6 +13,8 @@ if(!hasNativeSupport()) {
   let registry = new Registry();
   let forEach = Array.prototype.forEach;
   let anonCount = 0;
+  let pollyScript = currentScript();
+  let includeSourceMaps = pollyScript.dataset.noSm == null;
 
   addModuleTools(registry);
 
@@ -58,7 +60,8 @@ if(!hasNativeSupport()) {
         cluster.post({
           type: 'fetch',
           url: url,
-          src: src
+          src: src,
+          includeSourceMaps: includeSourceMaps
         }, handler);
         registry.add(moduleScript);
       });

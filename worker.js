@@ -10724,6 +10724,7 @@ self.sourceMap = { SourceNode: SourceNode_1 };
 onmessage = function(ev){
   let msg = decode(ev.data);
   let url = msg.url;
+  let includeSourceMaps = msg.includeSourceMaps;
 
   let fetchPromise = msg.src ? Promise.resolve(msg.src)
     : fetch(url).then(function(resp){
@@ -10742,11 +10743,14 @@ onmessage = function(ev){
       vars: {},
       url: url
     };
-    let ast = acorn$1.parse(src, {
-      sourceType: 'module',
-      locations: true,
-      sourceFile: url
-    });
+    let parseOptions = {
+      sourceType: 'module'
+    };
+    if(includeSourceMaps) {
+      parseOptions.locations = true;
+      parseOptions.sourceFile = url;
+    }
+    let ast = acorn$1.parse(src, parseOptions);
     acorn$1.walk.recursive(ast, state, visitors);
 
     if(state.includesExports) {
@@ -10755,17 +10759,21 @@ onmessage = function(ev){
     if(state.includeTools) {
       ast.body.unshift(addModuleTools(url));
     }
+    let codegenOptions = {};
+    if(includeSourceMaps) {
+      codegenOptions.sourceMap = codegenOptions.sourceMapWithCode = true;
+    }
+    let result = escodegen.generate(ast, codegenOptions);
 
-    let result = escodegen.generate(ast, {
-      sourceMap: true,
-      sourceMapWithCode: true
-    });
+    let code = includeSourceMaps ? result.code : result;
+    let map = includeSourceMaps ? result.map.toJSON() : undefined;
+
     return {
-      code: result.code,
+      code: code,
       deps: state.deps,
       exports: state.exports,
       exportStars: state.exportStars,
-      map: result.map.toJSON()
+      map: map
     };
   })
   .then(function(res){

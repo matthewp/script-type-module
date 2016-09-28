@@ -114,19 +114,14 @@ var addModuleTools = function(registry){
 
 // TODO saving this space in case I want to support multiple workers
 
-var execute = function({ url, code, map, resolve, reject }){
+var execute = function({ url, code, map }){
   if(map) {
     code += encode$1(map);
   } else {
     code += '\n//# sourceURL=' + url;
   }
 
-  try {
-    __scriptTypeModuleEval(code);
-    resolve();
-  } catch(err){
-    reject(err);
-  }
+   __scriptTypeModuleEval(code);
 }
 
 const prefix = '\n//# source' + 'MappingURL=data:application/json;base64,';
@@ -332,6 +327,11 @@ if(!hasNativeSupport()) {
     })
     .then(null, function(err){
       console.error(err);
+      var ev = new ErrorEvent('error', {
+        message: err.message,
+        filename: url
+      });
+      script.dispatchEvent(ev);
     });
   }
 

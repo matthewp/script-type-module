@@ -29,6 +29,11 @@ if(!hasNativeSupport()) {
     })
     .then(null, function(err){
       console.error(err);
+      var ev = new ErrorEvent('error', {
+        message: err.message,
+        filename: url
+      });
+      script.dispatchEvent(ev);
     });
   }
 

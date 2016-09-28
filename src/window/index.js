@@ -55,8 +55,8 @@ if(!hasNativeSupport()) {
     var promise = registry.fetchPromises.get(url);
     if(!promise) {
       promise = new Promise(function(resolve, reject){
-        let moduleScript = new ModuleScript(url, resolve, reject, tree);
-        tree.increment();
+        let moduleScript = new ModuleScript(url, resolve, reject);
+        moduleScript.addToTree(tree);
         let handler = function(msg){
           moduleScript.addMessage(msg);
           fetchTree(moduleScript, tree);
@@ -71,6 +71,10 @@ if(!hasNativeSupport()) {
         registry.add(moduleScript);
       });
       registry.fetchPromises.set(url, promise);
+    } else {
+      // See if this ModuleScript is still being fetched
+      let moduleScript = registry.get(url);
+      moduleScript.addToTree(tree);
     }
     return promise;
   }
@@ -78,7 +82,12 @@ if(!hasNativeSupport()) {
   function fetchTree(moduleScript, tree) {
     let deps = moduleScript.deps;
     let promises = deps.map(function(url){
-      return fetchModule(url, null, tree);
+      let fetchPromise = fetchModule(url, null, tree);
+      let depModuleScript = registry.get(url);
+      moduleScript.trees.forEach(function(tree){
+        depModuleScript.addToTree(tree);
+      });
+      return fetchPromise;
     });
     return Promise.all(promises);
   }

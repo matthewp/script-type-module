@@ -2,7 +2,6 @@ import execute from './execute.js';
 
 export default class {
   constructor() {
-    this.moduleMap = new Map();
     this.moduleScriptMap = new Map();
     this.fetchPromises = new Map();
   }
@@ -67,7 +66,6 @@ export default class {
   instantiate(moduleScript) {
     if(moduleScript.moduleRecord.instantiationStatus === 'uninstantiated') {
       this.addExports(moduleScript);
-      this.moduleMap.set(moduleScript.url, moduleScript.namespace);
       moduleScript.instantiate();
     }
   }

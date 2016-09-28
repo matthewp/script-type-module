@@ -159,9 +159,10 @@ class ModuleRecord {
 }
 
 class ModuleScript {
-  constructor(url, resolve, reject, tree){
+  constructor(url, resolve, reject){
     this.moduleRecord = new ModuleRecord();
-    this.tree = tree;
+    this.status = 'fetching';
+    this.trees = new Set();
     this.url = url;
     this.resolve = resolve;
     this.reject = reject;
@@ -174,7 +175,17 @@ class ModuleScript {
     this.namespace = {};
   }
 
+  addToTree(tree) {
+    if(!this.trees.has(tree)) {
+      this.trees.add(tree);
+      if(this.status === 'fetching') {
+        tree.increment();
+      }
+    }
+  }
+
   addMessage(msg) {
+    this.status = 'fetched';
     this.fetchMessage = msg;
     this.code = msg.src;
     this.map = msg.map;
@@ -183,7 +194,9 @@ class ModuleScript {
 
   complete() {
     this.resolve(this);
-    this.tree.decrement();
+    this.trees.forEach(function(tree){
+      tree.decrement();
+    });
   }
 
   isDepOf(moduleScript) {
@@ -228,7 +241,6 @@ function observe(importScript) {
 
 var Registry = class {
   constructor() {
-    this.moduleMap = new Map();
     this.moduleScriptMap = new Map();
     this.fetchPromises = new Map();
   }
@@ -293,7 +305,6 @@ var Registry = class {
   instantiate(moduleScript) {
     if(moduleScript.moduleRecord.instantiationStatus === 'uninstantiated') {
       this.addExports(moduleScript);
-      this.moduleMap.set(moduleScript.url, moduleScript.namespace);
       moduleScript.instantiate();
     }
   }
@@ -353,8 +364,8 @@ if(!hasNativeSupport()) {
     var promise = registry.fetchPromises.get(url);
     if(!promise) {
       promise = new Promise(function(resolve, reject){
-        let moduleScript = new ModuleScript(url, resolve, reject, tree);
-        tree.increment();
+        let moduleScript = new ModuleScript(url, resolve, reject);
+        moduleScript.addToTree(tree);
         let handler = function(msg){
           moduleScript.addMessage(msg);
           fetchTree(moduleScript, tree);
@@ -369,6 +380,10 @@ if(!hasNativeSupport()) {
         registry.add(moduleScript);
       });
       registry.fetchPromises.set(url, promise);
+    } else {
+      // See if this ModuleScript is still being fetched
+      let moduleScript = registry.get(url);
+      moduleScript.addToTree(tree);
     }
     return promise;
   }
@@ -376,7 +391,12 @@ if(!hasNativeSupport()) {
   function fetchTree(moduleScript, tree) {
     let deps = moduleScript.deps;
     let promises = deps.map(function(url){
-      return fetchModule(url, null, tree);
+      let fetchPromise = fetchModule(url, null, tree);
+      let depModuleScript = registry.get(url);
+      moduleScript.trees.forEach(function(tree){
+        depModuleScript.addToTree(tree);
+      });
+      return fetchPromise;
     });
     return Promise.all(promises);
   }

@@ -29,9 +29,10 @@ export class ModuleRecord {
 }
 
 export class ModuleScript {
-  constructor(url, resolve, reject, tree){
+  constructor(url, resolve, reject){
     this.moduleRecord = new ModuleRecord();
-    this.tree = tree;
+    this.status = 'fetching';
+    this.trees = new Set();
     this.url = url;
     this.resolve = resolve;
     this.reject = reject;
@@ -44,7 +45,17 @@ export class ModuleScript {
     this.namespace = {};
   }
 
+  addToTree(tree) {
+    if(!this.trees.has(tree)) {
+      this.trees.add(tree);
+      if(this.status === 'fetching') {
+        tree.increment();
+      }
+    }
+  }
+
   addMessage(msg) {
+    this.status = 'fetched';
     this.fetchMessage = msg;
     this.code = msg.src;
     this.map = msg.map;
@@ -53,7 +64,9 @@ export class ModuleScript {
 
   complete() {
     this.resolve(this);
-    this.tree.decrement();
+    this.trees.forEach(function(tree){
+      tree.decrement();
+    });
   }
 
   isDepOf(moduleScript) {

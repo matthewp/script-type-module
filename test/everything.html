@@ -8,25 +8,46 @@
 </head>
 <body>
   <div id="host"></div>
+  <div id="host2"></div>
+  <template id="loader">
+    <script type="module" src="./tests/everything/foo.js"></script>
+    <script type="module" src="./tests/everything/bar.js"></script>
+  </template>
 <mocha-test>
 <template>
 <script>
   describe('Everything', function(){
     this.timeout(5000);
 
+    function whenLoaded(script){
+      return new Promise(function(resolve, reject){
+        script.onload = resolve;
+        script.onerror = reject;
+      });
+    }
+
     after(function(){
       host.innerHTML = '';
     });
 
     it('works', function(done){
-      var script = document.createElement('script');
-      script.type = 'module';
-      script.onload = function(){
+      var frag = document.importNode(loader.content, true);
+      var one = frag.firstElementChild;
+      var two = one.nextElementSibling;
+
+      document.body.appendChild(frag);
+
+      var promises = [
+        whenLoaded(one),
+        whenLoaded(two)
+      ];
+
+      Promise.all(promises)
+      .then(function(){
         assert.equal(host.textContent, 'foobar');
-        done();
-      };
-      script.src = new URL('./tests/everything/foo.js', document.baseURI);
-      document.head.appendChild(script);
+        assert.equal(host2.textContent, 'barbar');
+      })
+      .then(done, done);
     });
   });
 </script>

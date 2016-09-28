@@ -5,14 +5,18 @@
 </head>
 <body>
   <h1 id="host">Loading</h1>
+  <h2 id="timeSpent"></h2>
   <script src="../../../polyfill.js"></script>
   <script type="module" src="./src/main.js"></script>
 
   <script>
   (function(){
     let script = document.querySelector('script[type=module]');
+    let start = performance.now();
     script.onload = function(){
+      let stop = performance.now();
       host.textContent = 'Done!';
+      timeSpent.textContent = stop - start;
     };
   })();
   </script>

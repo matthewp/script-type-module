@@ -5,12 +5,16 @@
 </head>
 <body>
   <h1 id="host">Loading</h1>
+  <h2 id="timeSpent"></h2>
   <script src="./node_modules/steal/steal.js"></script>
 
   <script>
   (function(){
+    let start = performance.now();
     steal.done().then(function(){
+      let stop = performance.now();
       host.textContent = 'Done!';
+      timeSpent.textContent = stop - start;
     });
   })();
   </script>

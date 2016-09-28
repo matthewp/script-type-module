@@ -13,6 +13,7 @@ export default function(node, state, name){
   switch(decl.type) {
     case 'FunctionDeclaration':
     case 'FunctionExpression':
+    case 'Identifier':
     case 'Literal':
     case 'ObjectExpression':
       valueArg = decl;

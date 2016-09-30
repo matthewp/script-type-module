@@ -15,7 +15,7 @@
   let importDynamic = function(specifier){
     return new Promise(function(resolve, reject){
       let script = document.createElement('script');
-      script.type = 'module';
+      script.type = 'module-polyfill';
       script.onload = function(){
         script.parentNode.removeChild(script);
         resolve();

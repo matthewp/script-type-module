@@ -1,3 +1,4 @@
 node_modules/
 test/perf/app/src/
 test/perf/app/node_modules/
+test/perf/app/jspm_packages/

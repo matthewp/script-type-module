@@ -4,22 +4,23 @@
   <title>Perf test</title>
 </head>
 <body>
-  <h1>script-type-module test</h1>
+  <h1>SystemJS test</h1>
 
   <h1 id="host">Loading</h1>
   <h2 id="timeSpent"></h2>
-  <script src="../../../polyfill.js"></script>
-  <script type="module" src="./src/main.js"></script>
+  <script src="./jspm_packages/system.js"></script>
+  <script src="./config.js"></script>
 
   <script>
   (function(){
-    let script = document.querySelector('script[type=module]');
     let start = performance.now();
-    script.onload = function(){
+
+    System.import('./src/main.js')
+    .then(function(){
       let stop = performance.now();
       host.textContent = 'Done!';
       timeSpent.textContent = stop - start;
-    };
+    });
   })();
   </script>
 </body>

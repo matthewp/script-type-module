@@ -217,7 +217,7 @@ class ModuleScript {
 const forEach = Array.prototype.forEach;
 
 function importExisting(importScript){
-  let tags = document.querySelectorAll('script[type=module]');
+  let tags = document.querySelectorAll('script[type=module-polyfill]');
   forEach.call(tags, importScript);
 }
 
@@ -225,7 +225,7 @@ function observe(importScript) {
   let mo = new MutationObserver(function(mutations){
     forEach.call(mutations, function(mutation){
       forEach.call(mutation.addedNodes, function(el){
-        if(el.nodeName === 'SCRIPT' && el.type === 'module') {
+        if(el.nodeName === 'SCRIPT' && el.type === 'module-polyfill') {
           importScript(el);
         }
       });

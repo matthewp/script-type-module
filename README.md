@@ -11,6 +11,8 @@ This polyfill includes:
 
 This is alpha-ish software that is tested, but not used for any real projects (yet). Check out the [tests/](https://github.com/matthewp/script-type-module/tree/master/test) folder to see what's been worked on, submit any issues you encounter.
 
+This polyfill uses a different `type` "module-polyfill" to avoid constraining browser implementations.
+
 ## Install
 
 ```
@@ -22,7 +24,7 @@ npm install script-type-module
 ```html
 <script src="./node_modules/script-type-module/polyfill.js"></script>
 
-<script type="module" src="./foo.js"></script>
+<script type="module-polyfill" src="./foo.js"></script>
 ```
 
 ## FAQ

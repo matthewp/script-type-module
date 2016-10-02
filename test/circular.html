@@ -41,6 +41,17 @@
       })
       .then(done, done);
     });
+
+    it('works with 3 modules that are circular', function(done){
+      importDynamic('./tests/circular/threeway.js')
+      .then(function(){
+        let r = self.RESULT;
+        assert.equal(r.one(), 'b');
+        assert.equal(r.two(), 'c');
+        assert.equal(r.three(), 'a');
+      })
+      .then(done, done);
+    });
   });
 })();
 </script>

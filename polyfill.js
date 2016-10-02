@@ -273,19 +273,20 @@ var Registry = class {
   }
 
   link(moduleScript) {
+    moduleScript.status = 'linking';
+
     let deps = moduleScript.deps;
     deps.forEach(depUrl => {
       let depModuleScript = this.get(depUrl);
       if(depModuleScript.moduleRecord.instantiationStatus === 'uninstantiated') {
         // Circular deps
-        if(moduleScript.isDepOf(depModuleScript)) {
-          // Go ahead and instantiate self
-          this.instantiate(moduleScript);
+        if(depModuleScript.status !== 'linking') {
+          this.link(depModuleScript);
         }
-        this.link(depModuleScript);
       }
     });
 
+    moduleScript.status = 'linked';
     this.instantiate(moduleScript);
   }
 

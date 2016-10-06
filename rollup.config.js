@@ -9,7 +9,7 @@ export default {
       main: true
     }),
     commonjs({
-      include: 'node_modules/**'
+      include: ['node_modules/**','src/vendor/acorn.js']
     })
   ]
 };

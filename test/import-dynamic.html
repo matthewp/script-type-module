@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head>
+  <title>Test import syntaxes</title>
+  <script src="../polyfill.js" defer data-no-sm></script>
+  <script src="../node_modules/webcomponents.js/webcomponents-lite.js" defer></script>
+  <link rel="import" href="../node_modules/mocha-test/mocha-test.html" defer>
+</head>
+<body>
+  <div id="host"></div>
+<mocha-test>
+<template>
+<script>
+(function(){
+  let importDynamic = function(specifier){
+    return new Promise(function(resolve, reject){
+      let script = document.createElement('script');
+      script.type = 'module-polyfill';
+      script.onload = function(){
+        script.parentNode.removeChild(script);
+        resolve();
+      };
+      script.src = new URL(specifier, document.baseURI);
+      document.head.appendChild(script);
+    });
+  };
+  describe('import()', function(){
+    this.timeout(5000);
+
+
+    it('basics works', function(done){
+      importDynamic('./tests/import-fn/dynamic.js')
+      .then(function(){
+        let res = self.RESULT;
+        assert.equal(res.foo, 'foo');
+
+        return Promise.all([res.bar, res.qux]);
+      })
+      .then(function(res){
+        let barNamespace = res[0];
+        let quxNamespace = res[1];
+
+        assert.equal(barNamespace.default, 'bar');
+        assert.equal(quxNamespace.default, 'qux');
+      })
+      .then(done, done);
+    });
+  });
+})();
+</script>
+</template>
+</mocha-test>
+</body>
+</html>

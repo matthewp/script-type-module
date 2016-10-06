@@ -9,7 +9,7 @@
     "rollup:window": "rollup -c rollup.config.js -o polyfill.js src/window/index.js",
     "prep": "cat src/window/eval.js |cat - polyfill.js > /tmp/out && mv /tmp/out polyfill.js",
     "build": "npm run build:worker && npm run build:window",
-    "test": "testee test/everything.html test/inline-everything.html test/import-syntax.html test/export-syntax.html test/scope.html test/circular.html test/errors.html --browsers firefox"
+    "test": "testee test/everything.html test/inline-everything.html test/import-syntax.html test/export-syntax.html test/scope.html test/circular.html test/errors.html test/import-dynamic.html --browsers firefox"
   },
   "repository": {
     "type": "git",

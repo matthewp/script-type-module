@@ -15,13 +15,13 @@ let anonCount = 0;
 let pollyScript = currentScript();
 let includeSourceMaps = pollyScript.dataset.noSm == null;
 
-addModuleTools(registry);
+addModuleTools(registry, dynamicImport);
 
 function importScript(script) {
   let url = "" + (script.src || new URL('./!anonymous_' + anonCount++, document.baseURI));
   let src = script.src ? undefined : script.textContent;
 
-  return importModule(url, src)
+  return internalImportModule(url, src)
   .then(function(){
     var ev = new Event('load');
     script.dispatchEvent(ev);
@@ -36,7 +36,15 @@ function importScript(script) {
   });
 }
 
-function importModule(url, src){
+function internalImportModule(url, src){
+  let entry = registry.get(url);
+  if(entry) {
+    return entry.instantiatePromise();
+  }
+  return importModuleWithTree(url, src);
+}
+
+function importModuleWithTree(url, src){
   let tree = new ModuleTree();
 
   return fetchModule(url, src, tree)
@@ -89,6 +97,12 @@ function fetchTree(moduleScript, tree) {
     return fetchPromise;
   });
   return Promise.all(promises);
+}
+
+function dynamicImport(url, src){
+  return internalImportModule(url, src).then(function(){
+    return registry.get(url).namespace;
+  });
 }
 
 importExisting(importScript);

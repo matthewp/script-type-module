@@ -40,6 +40,18 @@
       });
     });
   });
+
+  describe('Sloppy mode code', function(){
+    this.timeout(5000);
+
+    it('throws', function(done){
+      importDynamic('./tests/errors/sloppy/index.js')
+      .then(null, function(e){
+        assert.ok(/someGlobal/.test(e.message));
+        done();
+      });
+    });
+  });
 })();
 </script>
 </template>

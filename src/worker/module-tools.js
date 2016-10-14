@@ -55,3 +55,14 @@ export function addModuleNamespace(url){
     kind: "const"
   };
 };
+
+export function addStrictMode() {
+  return {
+    type: 'ExpressionStatement',
+    expression: {
+      type: 'Literal',
+      value: 'use strict',
+      raw: '"use strict"'
+    }
+  };
+}

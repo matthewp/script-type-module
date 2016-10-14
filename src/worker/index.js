@@ -1,7 +1,11 @@
 import '../vendor/escodegen.browser.js';
 import acorn from './acorn.js';
 import visitors from './visitors.js';
-import { addModuleTools, addModuleNamespace } from './module-tools.js';
+import {
+  addModuleTools,
+  addModuleNamespace,
+  addStrictMode
+} from './module-tools.js';
 import { decode, encode } from '../msg.js';
 import './source-maps.js';
 
@@ -43,6 +47,7 @@ onmessage = function(ev){
     if(state.includeTools) {
       ast.body.unshift(addModuleTools(url));
     }
+    ast.body.unshift(addStrictMode());
     let codegenOptions = {};
     if(includeSourceMaps) {
       codegenOptions.sourceMap = codegenOptions.sourceMapWithCode = true;

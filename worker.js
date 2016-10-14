@@ -9063,6 +9063,17 @@ function addModuleNamespace(url){
   };
 }
 
+function addStrictMode() {
+  return {
+    type: 'ExpressionStatement',
+    expression: {
+      type: 'Literal',
+      value: 'use strict',
+      raw: '"use strict"'
+    }
+  };
+}
+
 function decode(msg){
   return JSON.parse(msg);
 }
@@ -10760,6 +10771,7 @@ onmessage = function(ev){
     if(state.includeTools) {
       ast.body.unshift(addModuleTools(url));
     }
+    ast.body.unshift(addStrictMode());
     let codegenOptions = {};
     if(includeSourceMaps) {
       codegenOptions.sourceMap = codegenOptions.sourceMapWithCode = true;

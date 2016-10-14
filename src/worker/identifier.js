@@ -22,5 +22,5 @@ export default function(node, state){
 };
 
 function hasLocal(state, name) {
-  return state.vars && state.vars[name];
+  return state.vars[name];
 }

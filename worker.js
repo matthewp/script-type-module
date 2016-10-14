@@ -8881,7 +8881,7 @@ var Identifier = function(node, state){
 }
 
 function hasLocal(state, name) {
-  return state.vars && state.vars[name];
+  return state.vars[name];
 }
 
 var ImportDeclaration = function(node, state){
@@ -8972,6 +8972,25 @@ function getNamespaceName(specifiers, state) {
   return namespaceName;
 }
 
+function assign(a, b) {
+  for(var p in b) {
+    a[p] = b[p];
+  }
+  return a;
+}
+
+var Property = function(node, state, cont) {
+  if(node.shorthand) {
+    let key = node.key.name;
+    let specifier = state.specifiers[key];
+    if(specifier && !state.vars[key]) {
+      node.shorthand = false;
+      node.key = assign({}, node.key);
+    }
+  }
+  Object.getPrototypeOf(this).Property(node, state, cont);
+}
+
 var visitors = {
   AssignmentExpression: AssignmentExpression,
   ExportAllDeclaration: ExportAllDeclaration,
@@ -8982,6 +9001,7 @@ var visitors = {
   FunctionExpression: functionWithLocalState('FunctionExpression'),
   FunctionDeclaration: functionWithLocalState('FunctionDeclaration'),
   ArrowFunctionExpression: functionWithLocalState('ArrowFunctionExpression'),
+  Property: Property,
   VariableDeclarator: VariableDeclarator
 };
 

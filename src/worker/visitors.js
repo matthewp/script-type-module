@@ -4,6 +4,7 @@ import ExportDefaultDeclaration from './export-default-declaration.js';
 import ExportNamedDeclaration from './export-named-declaration.js';
 import Identifier from './identifier.js';
 import ImportDeclaration from './import-declaration.js';
+import Property from './property.js';
 
 export default {
   AssignmentExpression: AssignmentExpression,
@@ -15,6 +16,7 @@ export default {
   FunctionExpression: functionWithLocalState('FunctionExpression'),
   FunctionDeclaration: functionWithLocalState('FunctionDeclaration'),
   ArrowFunctionExpression: functionWithLocalState('ArrowFunctionExpression'),
+  Property: Property,
   VariableDeclarator: VariableDeclarator
 };
 

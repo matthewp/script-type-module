@@ -8794,6 +8794,23 @@ function isExportName(node, state){
   return left.type === 'Identifier' && state.exportNames[left.name];
 }
 
+var CallExpression = function(node, state, cont) {
+  // Handle incorrect arguments for dynamic import()
+  if(node.callee.type === 'ImportCallIdentifier') {
+    if(node.arguments.length !== 1) {
+      throw new SyntaxError('import() only takes a single argument');
+    }
+
+    // SpreadElement is disallowed
+    let argType = node.arguments[0].type;
+    if(argType === 'SpreadElement') {
+      throw new SyntaxError('Spread syntax not allowed in import()');
+    }
+  }
+
+  return Object.getPrototypeOf(this).CallExpression(node, state, cont);
+}
+
 var ExportAllDeclaration = function(node, state){
   let source = node.source;
   let fromUrl = new URL(source.value, state.url).toString();
@@ -9025,6 +9042,7 @@ function getNamespaceName(specifiers, state) {
 }
 
 var ImportCallIdentifier = function(node, state, cont){
+  state.includeTools = true;
   delete node.name;
 
   node.type = 'MemberExpression';
@@ -9059,6 +9077,7 @@ var Property = function(node, state, cont) {
 
 var visitors = {
   AssignmentExpression: AssignmentExpression,
+  CallExpression: CallExpression,
   ExportAllDeclaration: ExportAllDeclaration,
   ExportDefaultDeclaration: ExportDefaultDeclaration,
   ExportNamedDeclaration: ExportNamedDeclaration,
@@ -9161,14 +9180,6 @@ function addStrictMode() {
   };
 }
 
-function decode(msg){
-  return JSON.parse(msg);
-}
-
-function encode(msg){
-  return JSON.stringify(msg);
-}
-
 /* -*- Mode: js; js-indent-level: 2; -*- */
 /*
  * Copyright 2011 Mozilla Foundation and contributors
@@ -9181,7 +9192,7 @@ var intToCharMap = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567
 /**
  * Encode an integer in the range of 0 to 63 to a single base 64 digit.
  */
-var encode$2 = function (number) {
+var encode$1 = function (number) {
   if (0 <= number && number < intToCharMap.length) {
     return intToCharMap[number];
   }
@@ -9192,7 +9203,7 @@ var encode$2 = function (number) {
  * Decode a single base 64 character code digit to an integer. Returns -1 on
  * failure.
  */
-var decode$2 = function (charCode) {
+var decode$1 = function (charCode) {
   var bigA = 65;     // 'A'
   var bigZ = 90;     // 'Z'
 
@@ -9238,8 +9249,8 @@ var decode$2 = function (charCode) {
 };
 
 var base64$1 = {
-	encode: encode$2,
-	decode: decode$2
+	encode: encode$1,
+	decode: decode$1
 };
 
 /* -*- Mode: js; js-indent-level: 2; -*- */
@@ -9333,7 +9344,7 @@ function fromVLQSigned(aValue) {
 /**
  * Returns the base 64 VLQ encoded value.
  */
-var encode$1 = function base64VLQ_encode(aValue) {
+var encode = function base64VLQ_encode(aValue) {
   var encoded = "";
   var digit;
 
@@ -9357,7 +9368,7 @@ var encode$1 = function base64VLQ_encode(aValue) {
  * Decodes the next base 64 VLQ value from the given string and returns the
  * value and the rest of the string via the out parameter.
  */
-var decode$1 = function base64VLQ_decode(aStr, aIndex, aOutParam) {
+var decode = function base64VLQ_decode(aStr, aIndex, aOutParam) {
   var strLen = aStr.length;
   var result = 0;
   var shift = 0;
@@ -9384,8 +9395,8 @@ var decode$1 = function base64VLQ_decode(aStr, aIndex, aOutParam) {
 };
 
 var base64Vlq = {
-	encode: encode$1,
-	decode: decode$1
+	encode: encode,
+	decode: decode
 };
 
 var util$2 = createCommonjsModule(function (module, exports) {
@@ -10821,7 +10832,7 @@ var SourceNode_1 = SourceNode;
 self.sourceMap = { SourceNode: SourceNode_1 };
 
 onmessage = function(ev){
-  let msg = decode(ev.data);
+  let msg = ev.data;
   let url = msg.url;
   let includeSourceMaps = msg.includeSourceMaps;
 
@@ -10877,7 +10888,7 @@ onmessage = function(ev){
     };
   })
   .then(function(res){
-    postMessage(encode({
+    postMessage({
       type: 'fetch',
       exports: res.exports,
       exportStars: res.exportStars,
@@ -10885,7 +10896,17 @@ onmessage = function(ev){
       url: url,
       src: res.code,
       map: res.map
-    }));
+    });
+  })
+  .then(null, function(err){
+    postMessage({
+      type: 'error',
+      url: url,
+      error: {
+        message: err.message,
+        name: err.name
+      }
+    });
   });
 }
 

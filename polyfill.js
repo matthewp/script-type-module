@@ -14,14 +14,6 @@ function getCurrentScriptTheHardWay() {
   return scripts[scripts.length - 1];
 }
 
-function decode(msg){
-  return JSON.parse(msg);
-}
-
-function encode(msg){
-  return JSON.stringify(msg);
-}
-
 class Cluster {
   constructor(count){
     this.count = count;
@@ -33,7 +25,7 @@ class Cluster {
   post(msg, handler) {
     let worker = this.leastBusy();
     worker.handlers[msg.url] = handler;
-    worker.postMessage(encode(msg));
+    worker.postMessage(msg);
     worker.inProgress++;
   }
 
@@ -61,7 +53,7 @@ class Cluster {
     worker.handlers = {};
 
     worker.onmessage = function(ev){
-      let msg = decode(ev.data);
+      let msg = ev.data;
       let handler = worker.handlers[msg.url];
       handler(msg);
       worker.inProgress--;
@@ -189,6 +181,10 @@ class ModuleScript {
     this.trees.forEach(function(tree){
       tree.decrement();
     });
+  }
+
+  error(err) {
+    this.reject(err);
   }
 
   isDepOf(moduleScript) {
@@ -380,6 +376,8 @@ function importModuleWithTree(url, src){
   .then(function(moduleScript){
     registry.link(moduleScript);
   });
+
+
 }
 
 function fetchModule(url, src, tree) {
@@ -389,6 +387,13 @@ function fetchModule(url, src, tree) {
       let moduleScript = new ModuleScript(url, resolve, reject);
       moduleScript.addToTree(tree);
       let handler = function(msg){
+        if(msg.type === 'error') {
+          let ErrorConstructor = self[msg.error.name] || Error;
+          let error = new ErrorConstructor(msg.error.message);
+          moduleScript.error(error);
+          return;
+        }
+
         moduleScript.addMessage(msg);
         fetchTree(moduleScript, tree);
         moduleScript.complete();

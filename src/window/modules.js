@@ -74,6 +74,10 @@ export class ModuleScript {
     });
   }
 
+  error(err) {
+    this.reject(err);
+  }
+
   isDepOf(moduleScript) {
     return moduleScript.deps.indexOf(this.url) !== -1;
   }

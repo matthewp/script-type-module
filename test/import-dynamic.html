@@ -20,6 +20,10 @@
         script.parentNode.removeChild(script);
         resolve();
       };
+      script.onerror = function(e){
+        script.parentNode.removeChild(script);
+        reject(e);
+      };
       script.src = new URL(specifier, document.baseURI);
       document.head.appendChild(script);
     });
@@ -28,7 +32,7 @@
     this.timeout(5000);
 
 
-    it('basics works', function(done){
+    it('works alongside static imports', function(done){
       importDynamic('./tests/import-fn/dynamic.js')
       .then(function(){
         let res = self.RESULT;
@@ -42,6 +46,26 @@
 
         assert.equal(barNamespace.default, 'bar');
         assert.equal(quxNamespace.default, 'qux');
+      })
+      .then(done, done);
+    });
+
+    it('SyntaxError if spread is used', function(done){
+      importDynamic('./tests/import-fn/spread.js')
+      .then(function(){
+        assert.ok(false, 'Import succeeded when it should have failed');
+      }, function(err){
+        assert.ok(/Spread syntax/.test(err.message));
+      })
+      .then(done, done);
+    });
+
+    it('SyntaxError if multiple arguments are passed', function(done){
+      importDynamic('./tests/import-fn/multi-arg.js')
+      .then(function(){
+        assert.ok(false, 'Import succeeded when it should have failed');
+      }, function(err){
+        assert.ok(/single argument/.test(err.message));
       })
       .then(done, done);
     });

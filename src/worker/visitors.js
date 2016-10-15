@@ -1,4 +1,5 @@
 import AssignmentExpression from './assignment-expression.js';
+import CallExpression from './call-expression.js';
 import ExportAllDeclaration from './export-all-declaration.js';
 import ExportDefaultDeclaration from './export-default-declaration.js';
 import ExportNamedDeclaration from './export-named-declaration.js';
@@ -9,6 +10,7 @@ import Property from './property.js';
 
 export default {
   AssignmentExpression: AssignmentExpression,
+  CallExpression: CallExpression,
   ExportAllDeclaration: ExportAllDeclaration,
   ExportDefaultDeclaration: ExportDefaultDeclaration,
   ExportNamedDeclaration: ExportNamedDeclaration,

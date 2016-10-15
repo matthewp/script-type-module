@@ -1,5 +1,6 @@
 
 export default function(node, state, cont){
+  state.includeTools = true;
   delete node.name;
 
   node.type = 'MemberExpression';

@@ -6,11 +6,10 @@ import {
   addModuleNamespace,
   addStrictMode
 } from './module-tools.js';
-import { decode, encode } from '../msg.js';
 import './source-maps.js';
 
 onmessage = function(ev){
-  let msg = decode(ev.data);
+  let msg = ev.data;
   let url = msg.url;
   let includeSourceMaps = msg.includeSourceMaps;
 
@@ -66,7 +65,7 @@ onmessage = function(ev){
     };
   })
   .then(function(res){
-    postMessage(encode({
+    postMessage({
       type: 'fetch',
       exports: res.exports,
       exportStars: res.exportStars,
@@ -74,6 +73,16 @@ onmessage = function(ev){
       url: url,
       src: res.code,
       map: res.map
-    }));
+    });
+  })
+  .then(null, function(err){
+    postMessage({
+      type: 'error',
+      url: url,
+      error: {
+        message: err.message,
+        name: err.name
+      }
+    });
   });
 }

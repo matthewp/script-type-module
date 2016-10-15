@@ -56,6 +56,8 @@ function importModuleWithTree(url, src){
   .then(function(moduleScript){
     registry.link(moduleScript);
   });
+
+
 }
 
 function fetchModule(url, src, tree) {
@@ -65,6 +67,13 @@ function fetchModule(url, src, tree) {
       let moduleScript = new ModuleScript(url, resolve, reject);
       moduleScript.addToTree(tree);
       let handler = function(msg){
+        if(msg.type === 'error') {
+          let ErrorConstructor = self[msg.error.name] || Error;
+          let error = new ErrorConstructor(msg.error.message);
+          moduleScript.error(error);
+          return;
+        }
+
         moduleScript.addMessage(msg);
         fetchTree(moduleScript, tree);
         moduleScript.complete();

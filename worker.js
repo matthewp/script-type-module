@@ -8859,8 +8859,9 @@ function exportFrom(node, state){
 
 var Identifier = function(node, state){
   let specifier = state.specifiers[node.name];
+  let localVar = hasLocal(state, node.name);
 
-  if(specifier && !hasLocal(state, node.name)) {
+  if(specifier && !localVar) {
     if(specifier.type === 'star') {
       node.name = specifier.ns;
     } else {
@@ -8877,6 +8878,26 @@ var Identifier = function(node, state){
       node.computed = false;
       delete node.name;
     }
+  } else if(state.exports[node.name] && !localVar) {
+    node.type = 'MemberExpression';
+    node.object = {
+      type: 'MemberExpression',
+      object: {
+        type: 'Identifier',
+        name: '_moduleTools'
+      },
+      property: {
+        type: 'Identifier',
+        name: 'namespace'
+      },
+      computed: false
+    };
+    node.property = {
+      type: 'Identifier',
+      name: node.name
+    };
+    node.computed = false;
+    delete node.name;
   }
 }
 

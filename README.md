@@ -33,6 +33,23 @@ The [stage 2 import()](https://github.com/domenic/proposal-dynamic-import) propo
 
 This polyfill includes support for `import()`. Here's an example usage:
 
+**/pages/home.js**
+
+```js
+export function page(){
+  let section = document.createElement('section');
+  section.innerHTML = `
+    <h1>Home</h1>
+
+    <p>Welcome home!</p>
+  `;
+
+  return section;
+}
+```
+
+**index.html**
+
 ```html
 <main></main>
 
@@ -46,6 +63,8 @@ This polyfill includes support for `import()`. Here's an example usage:
   });
 </script>
 ```
+
+In this case we are dynamically inserting DOM based on the `location.hash`, so that if the URL is `http://example.com#home` the `/pages/home.js` module is dynamically imported and inserted into `<main>`.
 
 ## FAQ
 

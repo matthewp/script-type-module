@@ -1,4 +1,4 @@
-export default function(registry){
+export default function(registry, dynamicImport){
   self._importTypeModuleTools = function(url){
     let moduleScript = registry.get(url);
     let namespace = moduleScript.namespace;
@@ -9,9 +9,9 @@ export default function(registry){
         let moduleScript = registry.get(u);
         return moduleScript.namespace;
       },
-      namedExport: function(name, value){
-        throw new Error('This is not implemented currently.');
-        //namespace[name] = value;
+      dynamicImport: function(specifier){
+        let u = new URL(specifier, url).toString();
+        return dynamicImport(u);
       },
       set: function(name, value) {
         if(typeof name === 'object') {

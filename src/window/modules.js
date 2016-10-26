@@ -32,10 +32,12 @@ export class ModuleScript {
   constructor(url, resolve, reject){
     this.moduleRecord = new ModuleRecord();
     this.status = 'fetching';
+    this.baseTree = null;
     this.trees = new Set();
     this.url = url;
     this.resolve = resolve;
     this.reject = reject;
+    this._instantiationPromise = null;
 
     this.fetchMessage = null;
     this.deps = null;
@@ -50,6 +52,9 @@ export class ModuleScript {
       this.trees.add(tree);
       if(this.status === 'fetching') {
         tree.increment();
+      }
+      if(!this.baseTree) {
+        this.baseTree = tree;
       }
     }
   }
@@ -69,6 +74,10 @@ export class ModuleScript {
     });
   }
 
+  error(err) {
+    this.reject(err);
+  }
+
   isDepOf(moduleScript) {
     return moduleScript.deps.indexOf(this.url) !== -1;
   }
@@ -79,7 +88,30 @@ export class ModuleScript {
       this.moduleRecord.instantiationStatus = 'instantiated';
     } catch(err) {
       this.moduleRecord.instantiationStatus = 'errored';
+      this.moduleRecord.errorReason = err;
       throw err;
+    }
+  }
+
+  instantiatePromise() {
+    if(this._instantiationPromise) {
+      return this._instantiationPromise;
+    }
+    return this._instantiationPromise = this._getInstantiatePromise();
+  }
+
+  _getInstantiatePromise() {
+    switch(this.moduleRecord.instantiationStatus) {
+      case 'instantiated':
+        return Promise.resolve();
+      case 'errored':
+        return Promise.reject(this.moduleRecord.errorReason);
+      default:
+        let tree = this.baseTree;
+        return tree.fetchPromise.then(() => {
+          // Wait for it to execute
+          return this._getInstantiatePromise();
+        });
     }
   }
 }

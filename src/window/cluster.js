@@ -1,5 +1,3 @@
-import { decode, encode } from '../msg.js';
-
 class Cluster {
   constructor(count){
     this.count = count;
@@ -11,7 +9,7 @@ class Cluster {
   post(msg, handler) {
     let worker = this.leastBusy();
     worker.handlers[msg.url] = handler;
-    worker.postMessage(encode(msg));
+    worker.postMessage(msg);
     worker.inProgress++;
   }
 
@@ -39,7 +37,7 @@ class Cluster {
     worker.handlers = {};
 
     worker.onmessage = function(ev){
-      let msg = decode(ev.data);
+      let msg = ev.data;
       let handler = worker.handlers[msg.url];
       handler(msg);
       worker.inProgress--;

@@ -14,14 +14,6 @@ function getCurrentScriptTheHardWay() {
   return scripts[scripts.length - 1];
 }
 
-function decode(msg){
-  return JSON.parse(msg);
-}
-
-function encode(msg){
-  return JSON.stringify(msg);
-}
-
 class Cluster {
   constructor(count){
     this.count = count;
@@ -33,7 +25,7 @@ class Cluster {
   post(msg, handler) {
     let worker = this.leastBusy();
     worker.handlers[msg.url] = handler;
-    worker.postMessage(encode(msg));
+    worker.postMessage(msg);
     worker.inProgress++;
   }
 
@@ -61,7 +53,7 @@ class Cluster {
     worker.handlers = {};
 
     worker.onmessage = function(ev){
-      let msg = decode(ev.data);
+      let msg = ev.data;
       let handler = worker.handlers[msg.url];
       handler(msg);
       worker.inProgress--;
@@ -69,7 +61,7 @@ class Cluster {
   }
 }
 
-var addModuleTools = function(registry){
+var addModuleTools = function(registry, dynamicImport){
   self._importTypeModuleTools = function(url){
     let moduleScript = registry.get(url);
     let namespace = moduleScript.namespace;
@@ -80,9 +72,9 @@ var addModuleTools = function(registry){
         let moduleScript = registry.get(u);
         return moduleScript.namespace;
       },
-      namedExport: function(name, value){
-        throw new Error('This is not implemented currently.');
-        //namespace[name] = value;
+      dynamicImport: function(specifier){
+        let u = new URL(specifier, url).toString();
+        return dynamicImport(u);
       },
       set: function(name, value) {
         if(typeof name === 'object') {
@@ -149,10 +141,12 @@ class ModuleScript {
   constructor(url, resolve, reject){
     this.moduleRecord = new ModuleRecord();
     this.status = 'fetching';
+    this.baseTree = null;
     this.trees = new Set();
     this.url = url;
     this.resolve = resolve;
     this.reject = reject;
+    this._instantiationPromise = null;
 
     this.fetchMessage = null;
     this.deps = null;
@@ -167,6 +161,9 @@ class ModuleScript {
       this.trees.add(tree);
       if(this.status === 'fetching') {
         tree.increment();
+      }
+      if(!this.baseTree) {
+        this.baseTree = tree;
       }
     }
   }
@@ -186,6 +183,10 @@ class ModuleScript {
     });
   }
 
+  error(err) {
+    this.reject(err);
+  }
+
   isDepOf(moduleScript) {
     return moduleScript.deps.indexOf(this.url) !== -1;
   }
@@ -196,7 +197,30 @@ class ModuleScript {
       this.moduleRecord.instantiationStatus = 'instantiated';
     } catch(err) {
       this.moduleRecord.instantiationStatus = 'errored';
+      this.moduleRecord.errorReason = err;
       throw err;
+    }
+  }
+
+  instantiatePromise() {
+    if(this._instantiationPromise) {
+      return this._instantiationPromise;
+    }
+    return this._instantiationPromise = this._getInstantiatePromise();
+  }
+
+  _getInstantiatePromise() {
+    switch(this.moduleRecord.instantiationStatus) {
+      case 'instantiated':
+        return Promise.resolve();
+      case 'errored':
+        return Promise.reject(this.moduleRecord.errorReason);
+      default:
+        let tree = this.baseTree;
+        return tree.fetchPromise.then(() => {
+          // Wait for it to execute
+          return this._getInstantiatePromise();
+        });
     }
   }
 }
@@ -311,13 +335,13 @@ let anonCount = 0;
 let pollyScript = currentScript();
 let includeSourceMaps = pollyScript.dataset.noSm == null;
 
-addModuleTools(registry);
+addModuleTools(registry, dynamicImport);
 
 function importScript(script) {
   let url = "" + (script.src || new URL('./!anonymous_' + anonCount++, document.baseURI));
   let src = script.src ? undefined : script.textContent;
 
-  return importModule(url, src)
+  return internalImportModule(url, src)
   .then(function(){
     var ev = new Event('load');
     script.dispatchEvent(ev);
@@ -332,7 +356,15 @@ function importScript(script) {
   });
 }
 
-function importModule(url, src){
+function internalImportModule(url, src){
+  let entry = registry.get(url);
+  if(entry) {
+    return entry.instantiatePromise();
+  }
+  return importModuleWithTree(url, src);
+}
+
+function importModuleWithTree(url, src){
   let tree = new ModuleTree();
 
   return fetchModule(url, src, tree)
@@ -344,6 +376,8 @@ function importModule(url, src){
   .then(function(moduleScript){
     registry.link(moduleScript);
   });
+
+
 }
 
 function fetchModule(url, src, tree) {
@@ -353,6 +387,13 @@ function fetchModule(url, src, tree) {
       let moduleScript = new ModuleScript(url, resolve, reject);
       moduleScript.addToTree(tree);
       let handler = function(msg){
+        if(msg.type === 'error') {
+          let ErrorConstructor = self[msg.error.name] || Error;
+          let error = new ErrorConstructor(msg.error.message);
+          moduleScript.error(error);
+          return;
+        }
+
         moduleScript.addMessage(msg);
         fetchTree(moduleScript, tree);
         moduleScript.complete();
@@ -385,6 +426,12 @@ function fetchTree(moduleScript, tree) {
     return fetchPromise;
   });
   return Promise.all(promises);
+}
+
+function dynamicImport(url, src){
+  return internalImportModule(url, src).then(function(){
+    return registry.get(url).namespace;
+  });
 }
 
 importExisting(importScript);

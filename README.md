@@ -27,6 +27,45 @@ npm install script-type-module
 <script type="module-polyfill" src="./foo.js"></script>
 ```
 
+### Dynamic import
+
+The [stage 2 import()](https://github.com/domenic/proposal-dynamic-import) proposal allows you to dynamically import code based on runtime considerations. This is useful if you want to delay loading parts of the application for any reason (such as based on user input).
+
+This polyfill includes support for `import()`. Here's an example usage:
+
+**/pages/home.js**
+
+```js
+export function page(){
+  let section = document.createElement('section');
+  section.innerHTML = `
+    <h1>Home</h1>
+
+    <p>Welcome home!</p>
+  `;
+
+  return section;
+}
+```
+
+**index.html**
+
+```html
+<main></main>
+
+<script src="./node_modules/script-type-module/polyfill.js"></script>
+
+<script type="module-polyfill">
+  let page = location.hash.substr(1);
+
+  import(`./pages/${page}.js`).then(ns => {
+    document.querySelector('main').appendChild(ns.page());
+  });
+</script>
+```
+
+In this case we are dynamically inserting DOM based on the `location.hash`, so that if the URL is `http://example.com#home` the `/pages/home.js` module is dynamically imported and inserted into `<main>`.
+
 ## FAQ
 
 **Why use this instead of a bundler?**

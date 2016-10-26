@@ -38,14 +38,16 @@
         let res = self.RESULT;
         assert.equal(res.foo, 'foo');
 
-        return Promise.all([res.bar, res.qux]);
+        return Promise.all([res.bar, res.qux, res.baz]);
       })
       .then(function(res){
         let barNamespace = res[0];
         let quxNamespace = res[1];
+        let bazNamespace = res[2];
 
         assert.equal(barNamespace.default, 'bar');
         assert.equal(quxNamespace.default, 'qux');
+        assert.equal(bazNamespace.default, 'baz');
       })
       .then(done, done);
     });

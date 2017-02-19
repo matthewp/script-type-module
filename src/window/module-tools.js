@@ -23,6 +23,9 @@ export default function(registry, dynamicImport){
         }
         moduleScript.values[name] = value;
         return value;
+      },
+      makeHTMLDocument: function(html){
+
       }
     };
   };

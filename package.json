@@ -1,6 +1,6 @@
 {
   "name": "script-type-module",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "<script type=module> polyfill",
   "main": "script-type-module.js",
   "scripts": {

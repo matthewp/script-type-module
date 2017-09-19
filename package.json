@@ -33,6 +33,7 @@
     "rollup-plugin-node-resolve": "^2.0.0",
     "source-map": "^0.5.6",
     "systemjs": "^0.19.39",
+    "testee": "0.7.0",
     "traceur": "0.0.111",
     "webcomponents.js": "^0.7.22"
   }
